@@ -780,6 +780,7 @@ func TestStatusKeepsLocalSwarmWhenSwarmListTimesOut(t *testing.T) {
 		Swarms    []bridgeSwarmView              `json:"swarms"`
 		Providers []provider                     `json:"providers"`
 		Members   []swarmMemberSummary           `json:"members"`
+		Sharing   localShareStatus               `json:"sharing"`
 		Swarm     bridgeSwarmCapacitySummaryView `json:"swarm"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
@@ -796,6 +797,9 @@ func TestStatusKeepsLocalSwarmWhenSwarmListTimesOut(t *testing.T) {
 	}
 	if !bytes.Contains(rec.Body.Bytes(), []byte(`"provider_id":"`+localProviderID+`"`)) {
 		t.Fatalf("expected local provider fallback in status, got %s", rec.Body.String())
+	}
+	if !body.Sharing.Published || body.Sharing.Status != "available" || len(body.Sharing.PublishedModels) != 1 {
+		t.Fatalf("expected degraded status to still expose local sharing as published, got %+v", body.Sharing)
 	}
 	if body.Swarm.SlotsTotal != 2 || body.Swarm.SlotsFree != 2 || body.Swarm.ModelCount != 1 {
 		t.Fatalf("expected aggregate swarm stats to use live providers, got %+v", body.Swarm)

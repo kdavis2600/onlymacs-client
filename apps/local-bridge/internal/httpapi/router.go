@@ -722,6 +722,8 @@ func (s *service) statusHandler(w http.ResponseWriter, r *http.Request) {
 		slotsFree, slotsTotal := aggregateProviderSlots(providers)
 		activeSwarmName := statusActiveSwarmName(swarmsResp.Swarms, runtime, shareStatus)
 		shareStatus.ActiveSwarmName = activeSwarmName
+		s.enrichLocalShareSnapshotFromCoordinator(&shareStatus, providers, swarmsResp.Swarms)
+		usage = buildUsageSummary(s.requestMetrics.snapshotValue(), shareStatus, memberSummary)
 		swarms := bridgeSwarmsForStatus(swarmsResp.Swarms, runtime, activeSwarmName, slotsFree, slotsTotal, len(buildSwarmMembers(providers, memberSummary)))
 		bridgeStatus := "degraded"
 		if len(providers) > 0 && (providersErr == nil || isTransientCoordinatorStateError(providersErr)) {
