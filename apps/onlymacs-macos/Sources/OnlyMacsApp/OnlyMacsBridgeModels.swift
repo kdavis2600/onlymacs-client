@@ -61,7 +61,7 @@ struct BridgeStatusSnapshot: Decodable {
 
     static let placeholder = BridgeStatusSnapshot(
         bridge: BridgeSummary(status: "bootstrapping", coordinatorURL: nil, activeSwarmName: nil, error: nil),
-        runtime: BridgeRuntime(mode: "use", activeSwarmID: ""),
+        runtime: BridgeRuntime(mode: "both", activeSwarmID: "swarm-public"),
         identity: .placeholder,
         modes: ["use", "share", "both"],
         swarms: [],
@@ -498,8 +498,8 @@ struct LocalShareSnapshot: Decodable {
     static let placeholder = LocalShareSnapshot(
         providerID: "provider-this-mac",
         providerName: "This Mac",
-        mode: "use",
-        activeSwarmID: "",
+        mode: "both",
+        activeSwarmID: "swarm-public",
         activeSwarmName: nil,
         published: false,
         status: "bootstrapping",

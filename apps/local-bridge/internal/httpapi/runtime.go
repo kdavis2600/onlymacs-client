@@ -40,7 +40,7 @@ func newRuntimeStore(path string) *runtimeStore {
 	store := &runtimeStore{
 		path: strings.TrimSpace(path),
 		config: runtimeConfig{
-			Mode:          "use",
+			Mode:          "both",
 			ActiveSwarmID: defaultPublicSwarmID,
 		},
 	}

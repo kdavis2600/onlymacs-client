@@ -310,9 +310,21 @@ func TestIdentityHandlerPersistsMemberNameAndRefreshesMembership(t *testing.T) {
 	}))
 	defer coordinator.Close()
 
+	inference := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/models":
+			writeJSON(w, http.StatusOK, ollamaModelsResponse{})
+		default:
+			t.Fatalf("unexpected inference path %s", r.URL.Path)
+		}
+	}))
+	defer inference.Close()
+
 	mux := NewMuxWithConfig(Config{
-		CoordinatorURL: coordinator.URL,
-		HTTPClient:     coordinator.Client(),
+		CoordinatorURL:      coordinator.URL,
+		HTTPClient:          coordinator.Client(),
+		OllamaURL:           inference.URL,
+		InferenceHTTPClient: inference.Client(),
 	})
 
 	body := []byte(`{"member_name":"Kevin"}`)

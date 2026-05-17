@@ -34,6 +34,27 @@ func TestRuntimeStoreMigratesLegacyActivePoolID(t *testing.T) {
 	}
 }
 
+func TestRuntimeStoreDefaultsFreshInstallsToPublicSharing(t *testing.T) {
+	store := newRuntimeStore(filepath.Join(t.TempDir(), "runtime.json"))
+	runtime := store.Get()
+	if runtime.Mode != "both" || runtime.ActiveSwarmID != defaultPublicSwarmID {
+		t.Fatalf("expected fresh runtime to auto-share on public swarm, got %+v", runtime)
+	}
+}
+
+func TestRuntimeStoreFillsMissingModeWithPublicSharingDefault(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "runtime.json")
+	if err := os.WriteFile(path, []byte(`{"active_swarm_id":"swarm-public"}`), 0o600); err != nil {
+		t.Fatalf("write runtime without mode: %v", err)
+	}
+
+	store := newRuntimeStore(path)
+	runtime := store.Get()
+	if runtime.Mode != "both" || runtime.ActiveSwarmID != defaultPublicSwarmID {
+		t.Fatalf("expected missing mode to inherit public sharing default, got %+v", runtime)
+	}
+}
+
 func TestCoordinatorCredentialStorePersistsBesideRuntimeState(t *testing.T) {
 	runtimePath := filepath.Join(t.TempDir(), "runtime.json")
 	store := newCoordinatorCredentialStore(runtimePath)
