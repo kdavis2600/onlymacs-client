@@ -1,0 +1,79 @@
+---
+title: The OnlyMacs App
+description: A friendly tour of the menu bar app and control center.
+---
+# The OnlyMacs App
+
+The OnlyMacs app is the control center for normal users. It keeps the local
+runtime alive, shows whether your Mac is connected to the right swarm, manages
+sharing and models, and gives you repair actions when something stops working.
+
+Claude Code, Codex, and the CLI all depend on the app-managed runtime. If the app
+shows an unhealthy state, fix that first.
+
+<Learn>
+Use the **menu bar popup** for quick checks while you work. Use the **full app**
+when you need to configure swarms, install models, review activity, change
+sharing, or repair runtime services.
+</Learn>
+
+---
+
+## What To Open First
+
+| If you want to... | Go to... |
+| :--- | :--- |
+| Confirm OnlyMacs is ready | **Menu Bar** |
+| See which swarm is active | **Current Swarm** |
+| Check a failed `/onlymacs` request | **Activity** |
+| Repair local services | **Runtime** |
+| Decide whether your Mac can help others | **Sharing** |
+| Install or inspect models | **Models** |
+| Export evidence for support | **Settings** or **Runtime** |
+
+<BestDefault>
+Before a private or long-running request, glance at the menu bar app. You want
+the runtime ready, the expected swarm selected, and no stale warning in Activity.
+</BestDefault>
+
+---
+
+## Working With Claude Code Or Codex
+
+Most users should ask OnlyMacs from an assistant:
+
+```text
+/onlymacs "summarize this project and suggest one safe next step"
+```
+
+If you have just installed OnlyMacs, refreshed launchers, or repaired runtime
+services, reopen Claude Code or Codex before trying again. Assistants can keep an
+old environment open, so the app may be healthy while the assistant still cannot
+see the newest launcher.
+
+If the assistant request fails, check **Activity** first. It should show the last
+request, the route, and the outcome. Then check **Runtime** for repair actions.
+
+---
+
+## App-First Troubleshooting
+
+Use this order before reaching for Terminal:
+
+1. Open the menu bar popup.
+2. Check **Runtime** for ready, connecting, or repair states.
+3. Check **Current Swarm** for the swarm you expected.
+4. Check **Activity** for the latest `/onlymacs` request.
+5. Reopen Claude Code or Codex if launchers were repaired.
+6. Export a support bundle from the app if support needs evidence.
+
+<Avoid>
+Avoid force-quitting daemons, editing runtime files, or switching private work to
+a public route just to get unstuck. Use the app's repair controls and keep
+sensitive work on local-first or trusted-only routes.
+</Avoid>
+
+<NextStep>
+Open [Menu Bar](/docs/mac-app/menu-bar) for the daily status checklist, or go to
+[Claude Code And Codex](/docs/assistants) for assistant-first workflows.
+</NextStep>

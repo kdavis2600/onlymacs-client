@@ -1,0 +1,98 @@
+---
+title: Menu Bar Popup
+description: Use the OnlyMacs menu bar popup for daily checks and quick actions.
+---
+# Menu Bar Popup
+
+The OnlyMacs menu bar popup is the first place to check before you ask Claude
+Code, Codex, or another tool to use OnlyMacs. It tells you whether the runtime is
+ready, which swarm is active, whether workers are visible, and whether the last
+request succeeded.
+
+<Learn>
+The popup is designed for quick confidence. You should be able to answer: Is
+OnlyMacs running? Am I connected to the swarm I expect? Did my last `/onlymacs`
+request reach the runtime?
+</Learn>
+
+---
+
+## Daily Check
+
+Before starting private work, check:
+
+| Indicator | Healthy state |
+| :--- | :--- |
+| Runtime | Ready or connected |
+| Current Swarm | The swarm you expect |
+| Route | Local or trusted for private work |
+| Activity | Latest request has a clear outcome |
+| Last Updated | Recent, not stale after sleep or network changes |
+
+If the app shows yellow, red, connecting, or stale state, open the full app and
+use **Runtime** or **Activity** before trying more prompts.
+
+<BestDefault>
+Use the menu bar popup as the normal status check. Use `/onlymacs check` inside
+Claude Code or Codex only when you want a text diagnosis or support asks for it.
+</BestDefault>
+
+---
+
+## When A Request Fails
+
+Start with the app:
+
+1. Open the menu bar popup.
+2. Check whether Runtime is ready.
+3. Confirm Current Swarm is the one you meant to use.
+4. Open Activity and inspect the latest `/onlymacs` request.
+5. Use the app's repair or restart action if Runtime reports a problem.
+6. Reopen Claude Code or Codex after launcher or runtime repair.
+
+If the public swarm is missing, do not assume your local client is broken. The
+app should show whether the runtime is connected, whether the swarm list is
+fresh, and whether the route policy is limiting what you can see.
+
+---
+
+## Route Safety
+
+The popup can show the current default route, but the request still matters. For
+sensitive work, use a local or trusted route in the assistant prompt:
+
+```text
+/onlymacs go local-first "draft a local-only checklist for reviewing secrets"
+```
+
+```text
+/onlymacs go trusted-only "review my current diff"
+```
+
+Use public or remote routes only for public-safe input:
+
+```text
+/onlymacs go remote-first "draft 10 public launch headlines for a Mac AI assistant"
+```
+
+<Avoid>
+Avoid treating a visible public swarm as permission to send private project
+context. Public-safe means you would be comfortable sharing the prompt and
+approved input outside your trusted devices.
+</Avoid>
+
+---
+
+## Support Evidence
+
+When support needs details, prefer the app's export support bundle action. It
+collects the useful runtime and activity context without requiring you to paste
+terminal logs manually.
+
+Support bundles redact known secrets, but they can still include file paths,
+machine names, and system details. Review the bundle before sending it.
+
+<NextStep>
+Next, open [Activity](/docs/mac-app/activity) to understand run history, or use
+[Claude Code And Codex](/docs/assistants) for assistant-first request examples.
+</NextStep>

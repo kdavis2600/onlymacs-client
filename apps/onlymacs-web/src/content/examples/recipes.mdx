@@ -1,0 +1,367 @@
+---
+title: Recipe Library
+description: Copyable OnlyMacs commands for common jobs.
+---
+# Recipe Library
+
+This page collects proven workflows for common development tasks. Each recipe explains the goal, the reasoning behind the chosen flags, and the specific trade-offs involved. Treat these as templates: copy the command structure, adjust the prompt to your context, and verify that your permission flags match your intent. The most important habit is to always confirm your `--context-read` source and `--context-write` destination before executing.
+
+<Learn>
+**What to know:** A recipe in OnlyMacs is a combination of a routing strategy (where the work happens), a context scope (what data the AI sees), and a permission set (what the AI is allowed to change). Changing one flag often requires adjusting the others to maintain safety and efficiency.
+</Learn>
+
+---
+
+## Review a private branch
+
+Use this workflow when you need AI feedback on unmerged code without modifying files or exposing sensitive logic to external services. This is ideal for pre-pull-request reviews, especially for proprietary features or experimental branches that have not left your machine.
+
+The command configures OnlyMacs to read only the current git diff (`--context-read git`) and write its analysis to your local inbox (`--context-write inbox`). By adding `--trusted-only`, you ensure all processing stays within trusted environments, preventing any data from leaking to public cloud models. The AI will analyze the changes but will not edit files or run tests unless explicitly permitted.
+
+```bash
+onlymacs --trusted-only --context-read git --context-write inbox \
+  "review this branch for bugs, regressions, and missing tests"
+```
+
+<BestDefault>
+**Recommended Settings:**
+*   **Read:** `git` (limits scope to current changes)
+*   **Write:** `inbox` (prevents accidental file overwrites)
+*   **Permissions:** No `--allow-tests` or `--allow-installs` (read-only analysis)
+</BestDefault>
+
+<Avoid>
+**Common Mistakes:**
+*   **Using `--remote-first`:** This risks leaking unreleased code to external providers. Stick to `--trusted-only` or `--local-first`.
+*   **Running on a dirty working directory:** Uncommitted changes confuse the diff extraction. Ensure your working tree is clean or commit your WIP first.
+*   **Assuming full repo visibility:** The AI only sees what `git diff` exposes. If you need broader context, switch to `--context-read full-project` but verify privacy settings first.
+</Avoid>
+
+<Recipe>
+**Narrowing the Focus:**
+If the output is too broad, refine your prompt to target specific files or logic:
+```bash
+onlymacs --trusted-only --context-read git --context-write inbox \
+  "focus only on the new payment handler in checkout.js and check for error handling"
+```
+</Recipe>
+
+---
+
+## Prepare a small patch
+
+This workflow automates the fix-and-validate loop for isolated, well-defined issues. Use it when you have identified a minor bug, such as a null reference or incorrect return type, and want OnlyMacs to propose a fix, apply it, and verify it passes your test suite.
+
+The key difference here is the inclusion of `--allow-tests` and `--context-write staged`. OnlyMacs will attempt to fix the issue, stage the resulting changes in git, and run the relevant tests. It does not commit the changes automatically, keeping you in control of the final merge.
+
+```bash
+onlymacs --trusted-only --context-read git --context-write staged --allow-tests \
+  "find one small bug, prepare the fix, and run the narrowest useful test"
+```
+
+<Decision>
+**When to use this pattern:**
+| Condition | Verdict |
+| :--- | :--- |
+| Problem is scoped to 1-2 files | **Go** |
+| Test suite is fast and reliable | **Go** |
+| You are ready to manually review logic | **Go** |
+| Problem involves architectural changes | **Stop** (Use `inbox` instead) |
+| Tests are flaky or slow | **Stop** (Remove `--allow-tests`) |
+</Decision>
+
+<Note>
+**Verification Step:** After the command finishes, always run `git diff --staged` to inspect the proposed changes. Verify that the tests passed and that the fix aligns with your team's conventions, as the AI may not know internal style rules.
+</Note>
+
+<Avoid>
+**Pitfalls:**
+*   **Vague prompts:** Asking to "fix all lint errors" often leads to noisy, style-heavy changes that break formatting rules. Be specific about the bug.
+*   **Large branches:** Running this on a branch with hundreds of changed files increases the risk of unintended side effects. Isolate the fix first.
+*   **Blind trust:** Avoid assuming correctness. The AI might "fix" a test by removing an assertion rather than fixing the code.
+</Avoid>
+
+---
+
+## Keep sensitive work on this Mac
+
+Use this mode when handling API keys, internal design documents, compliance-sensitive code, or unreleased product plans. It prioritizes privacy by forcing the system to prefer local models and requiring manual selection of files.
+
+The `--local-first` flag instructs OnlyMacs to keep work on This Mac when a route is needed. Combined with `--context-read manual`, the system will not scan your project automatically. Instead, it prompts you to approve specific files during execution. Output is written to `inbox` to prevent automatic modifications.
+
+```bash
+onlymacs --local-first --context-read manual --context-write inbox \
+  "review the files I approve and explain the security risks in plain English"
+```
+
+<BestDefault>
+**Privacy Checklist:**
+1.  Ensure your local model is loaded and responsive before starting.
+2.  Confirm the local model supports the context size required for your files.
+3.  Select individual files rather than parent directories to avoid exposing adjacent secrets.
+</BestDefault>
+
+<Note>
+**Local-First Behavior:** In the current product, `--local-first` keeps work on This Mac when a route is needed. It is not a fallback mechanism. If local resources are insufficient, the command may pause, fail, or ask you to choose another route instead of widening on its own.
+</Note>
+
+<Avoid>
+**What to Avoid:**
+*   **Assuming offline operation:** Unless explicitly configured, `--local-first` does not guarantee total isolation if other flags permit remote access.
+*   **Expecting cloud-level speed:** Local models trade capability and speed for privacy. Complex reasoning may take longer or be less fluent.
+*   **Selecting broad directories:** Choosing a folder like `src/` might inadvertently include config files with secrets. Pick files explicitly.
+</Avoid>
+
+---
+
+## Split a launch audit into lanes
+
+This pattern parallelizes analysis across multiple independent domains to improve depth and reduce wait time. It is best used when preparing for a major release and needing to audit several disconnected systems, such as onboarding, billing, and settings, simultaneously.
+
+The `--go-wide=4` flag splits the task into four concurrent workers. Each worker operates in isolation, reading from git and writing fixes directly to the staging area. When combined with `--allow-tests`, each lane verifies its own changes independently.
+
+```bash
+onlymacs --go-wide=4 --trusted-only --context-read git --context-write staged --allow-tests \
+  "audit onboarding, billing, settings, and release readiness in separate lanes"
+```
+
+<Decision>
+**Hardware Requirements:**
+| Machine Spec | Recommended Lanes |
+| :--- | :--- |
+| 4 Cores / 8GB RAM | 2 lanes (`--go-wide=2`) |
+| 8+ Cores / 16GB+ RAM | 4 lanes (`--go-wide=4`) |
+| Shared / Low-power laptop | 1 lane (omit flag) |
+</Decision>
+
+<Note>
+**Concurrency Constraint:** Lanes must operate on **independent** parts of the codebase. If multiple lanes try to edit the same file or run the same test suite simultaneously, race conditions will occur. Ensure your test runner is thread-safe if running in parallel.
+</Note>
+
+<Recipe>
+**Reducing Load:**
+If your machine struggles or fans spin loudly, reduce concurrency immediately:
+```bash
+onlymacs --go-wide=2 --trusted-only --context-read git --context-write staged --allow-tests \
+  "audit onboarding and billing only"
+```
+</Recipe>
+
+<Avoid>
+**When Not to Use:**
+*   **Interdependent tasks:** Avoid using wide lanes if one task depends on the output of another (e.g., "update schema before migration").
+*   **Daily tweaks:** Overhead outweighs benefits for single-file edits.
+*   **Unstable test suites:** Parallel test runs amplify flakiness.
+</Avoid>
+
+---
+
+## Run a plan file
+
+Turn a structured markdown document into an executable checklist. This is essential for repeating complex, multi-step workflows like version bumps, deployment gates, or compliance audits where consistency matters more than speed.
+
+OnlyMacs parses the plan file specified by `--plan:FILE` and executes steps sequentially. It can run tests between steps and stage completed items. The plan file acts as the source of truth for the workflow state.
+
+```bash
+onlymacs --trusted-only --plan:plans/release.md --context-write staged --allow-tests \
+  "execute this plan carefully and summarize each completed step"
+```
+
+**Example Plan File (`plans/release.md`):**
+```markdown
+- [ ] Update CHANGELOG.md with latest changes
+- [ ] Bump version in package.json
+- [ ] Run integration tests
+- [ ] Generate build artifacts
+```
+
+<BestDefault>
+**Plan Hygiene:**
+*   **Clarity:** Steps must be actionable. Avoid vague entries like "review performance."
+*   **Stability:** Freeze the plan file before starting. Avoid editing it while the agent is running, as this breaks state tracking.
+*   **Version Control:** Store plan files in git if they are reused across releases.
+</BestDefault>
+
+<Recipe>
+**Dry Run Strategy:**
+Before executing a complex plan, simulate it to ensure dependencies are met:
+```bash
+onlymacs --plan:plans/release.md --context-write none \
+  "dry run: show what would happen without making changes"
+```
+</Recipe>
+
+<Avoid>
+**Failure Modes:**
+*   **Ambiguity:** Vague instructions cause the agent to pause waiting for clarification.
+*   **Missing Dependencies:** If a step requires a tool not installed on the path, progress halts.
+*   **Concurrent Edits:** Editing the plan file or the target files manually during execution leads to inconsistent state.
+</Avoid>
+
+---
+
+## Get a public-copy rewrite
+
+Use this workflow for high-quality text generation for external-facing content like landing pages, documentation, blog posts, or emails. It uses cloud models optimized for language nuance and tone.
+
+The `--remote-first` flag routes the request to cloud models, while `--simple` disables tool use, focusing the agent purely on rewriting text. This mode is strictly for content generation, not code refactoring.
+
+```bash
+onlymacs --remote-first --simple \
+  "rewrite this public homepage copy so it is clearer and warmer"
+```
+
+<Note>
+**Input Method:** Input typically comes from stdin, clipboard, or active editor selection depending on your client setup. For file-based workflows, pipe the content directly.
+</Note>
+
+<Recipe>
+**Piping Content:**
+Process a draft file directly without opening an interactive session:
+```bash
+cat marketing/draft-homepage.txt | onlymacs --remote-first --simple \
+  "make this more engaging for startup founders"
+```
+</Recipe>
+
+<Avoid>
+**Security Boundary:**
+Avoid including the following in a `--remote-first` prompt:
+*   Internal URLs or IP addresses
+*   Customer PII (Personally Identifiable Information)
+*   Draft feature names or unreleased roadmap items
+*   Code containing unsanitized variables or secrets
+
+Sanitize all input before sending it to remote models.
+</Avoid>
+
+---
+
+## Save paid tokens when possible
+
+Adopt this cost-conscious strategy when exploring a large codebase before launching a targeted, high-budget session. It asks OnlyMacs to prefer capacity on your own trusted Macs before spending paid remote tokens.
+
+The `--offload-max` flag is useful for reconnaissance: repo summaries, risk maps, cheap cleanup ideas, and early scoping. It is not the best choice when you need the fastest possible answer.
+
+```bash
+onlymacs --offload-max --context-read git --context-write inbox \
+  "summarize this repo and identify cheap wins before I spend remote tokens"
+```
+
+<BestDefault>
+**Resource Needs:**
+*   **RAM:** At least 6GB free for large repositories.
+*   **Storage:** SSD storage is recommended for fast I/O during indexing.
+*   **Scope:** If the command fails or hangs, narrow the prompt itself to a subdirectory, such as "focus only on `src/core`."
+</BestDefault>
+
+<Note>
+**Set the expectation:** The output will be approximate. Use this phase as a quick scan. It identifies areas of interest but does not provide polished fixes. Use the results to decide which specific files warrant a deeper, token-intensive investigation.
+</Note>
+
+<Avoid>
+**Mistake to Avoid:**
+Avoid expecting production-ready code from this mode. If you need precise refactoring, follow up with a targeted `--remote-first` or `--trusted-only` session on the specific files identified.
+</Avoid>
+
+---
+
+## Watch work in progress
+
+Gain real-time visibility into long-running OnlyMacs sessions. This is important for debugging stuck agents, understanding reasoning delays, or monitoring multi-step automation like plan execution or wide-lane audits.
+
+Running `onlymacs watch` streams logs, intermediate thoughts, file edits, and status updates directly to your terminal. It acts as a dashboard for agent transparency.
+
+```bash
+onlymacs watch current
+```
+
+<Note>
+**Terminal Setup:** Run this command in a split terminal pane alongside your editor. This allows you to code while monitoring the agent's progress without switching windows.
+</Note>
+
+<Example>
+**Typical Output Stream:**
+```text
+[INFO] Reading git diff...
+[THINK] Considering three possible fixes for login timeout
+[TEST] Running 'npm test auth.spec.ts'...
+[PASS] Test suite passed
+[STAGE] Added fix-auth-timeout.patch to staging area
+```
+</Example>
+
+<Avoid>
+**Limitations:**
+*   **Single Viewer:** Only one watcher can attach to a session at a time.
+*   **File Locks:** Avoid running another `onlymacs` command in the same directory while watching, as file locks may trigger errors.
+*   **Freezes:** If the stream freezes, check system load or network connectivity (for remote components) before restarting.
+</Avoid>
+
+---
+
+## Resume the latest run
+
+Recover from interruptions without losing progress. Use this after sleep wake, accidental terminal closes, or network drops during a long session.
+
+The `onlymacs resume-run latest` command restores conversation history, pending tasks, and temporary state from disk. You do not need to re-scan the repo or re-explain the context.
+
+```bash
+onlymacs resume-run latest
+```
+
+<BestDefault>
+**What Gets Restored:**
+*   Last known prompt and response chain
+*   Unfinished tasks and active planning state
+*   Staged-but-uncommitted changes
+*   Session metadata
+</BestDefault>
+
+<Note>
+**Save Points:** The prior run must have reached a save point (typically every 30 seconds) for recovery to work. If the crash happened instantly upon startup, there may be nothing to resume.
+</Note>
+
+<Avoid>
+**Logical Errors:**
+Resume does **not** fix logical errors made before the crash. If the agent chose the wrong function or misunderstood the goal before disconnecting, resuming will continue down that same incorrect path. In such cases, start a fresh session with a corrected prompt.
+*   Avoid using resume to retry bad decisions.
+*   Avoid using resume to bypass failed tests intentionally.
+*   Avoid using resume after manually tampering with source files.
+</Avoid>
+
+---
+
+## Make a support bundle
+
+Generate a diagnostic snapshot for troubleshooting failures. Use this immediately after reproducing a bug, crash, or unexpected behavior to capture the system state.
+
+The command collects logs, config files, recent traces, and environment metadata into a compressed archive. This eliminates guesswork when contacting support or debugging internally.
+
+```bash
+onlymacs support-bundle latest
+```
+
+**Output:** `support-bundle-2025-04-05T10-22.zip`
+
+<BestDefault>
+**Bundle Contents:**
+*   Last 100 log lines
+*   Active configuration (redacted where possible)
+*   Session timeline
+*   Error stack traces (if any)
+</BestDefault>
+
+<Note>
+**Privacy Check:** Before sharing a support bundle, open the archive and scan for accidental inclusion of paths, usernames, or code snippets. Remove or redact sensitive entries manually. The tool attempts to redact known secrets, but human verification is required.
+</Note>
+
+<Avoid>
+**Timing Matters:**
+Run this command immediately after the issue occurs. Delayed bundles lose fidelity because log rotation may overwrite important error messages, and temporary state files may be cleaned up.
+*   A support bundle does not fix the issue, back up your code, or replace initial log review.
+</Avoid>
+
+<NextStep>
+Now that you understand these core patterns, try adapting one to your current project. Start with **Review a private branch** to see how context flags affect the output, then experiment with **Prepare a small patch** on a non-important file to test the staging workflow.
+</NextStep>

@@ -1,0 +1,202 @@
+---
+title: Security
+description: Practical safety defaults for private work, public work, and trusted swarms.
+---
+# Security
+
+OnlyMacs treats your code and data as private by default. That privacy model is built into the core architecture rather than added later as a preference. Safety in OnlyMacs is defined by the intersection of four controls: **execution route** (where the AI computes), **context read mode** (what files the AI can see), **context write mode** (how changes are applied to disk), and **coordinator policy** (what actions like testing or installing are permitted). These controls work together to create a safety profile appropriate for your specific task.
+
+You should select your configuration based on the sensitivity of the work. A proprietary algorithm requires a different posture than a public README update. This page walks you through the reasoning behind each setting, helping you choose the right balance of automation and isolation for sensitive internal projects, trusted private repositories, and public content.
+
+<Learn>
+**What to know:** Security in OnlyMacs is compositional. You build a safe environment by combining a restrictive execution route (like `--local-first`) with limited visibility (`--context-read manual`) and non-destructive output (`--context-write inbox`). No single flag guarantees safety; the combination does.
+</Learn>
+
+## Handling Sensitive Work: The Zero-Trust Default
+
+When working with proprietary logic, unreleased features, credentials, or any data you would not post to a public forum, assume the environment is untrusted until you explicitly configure it otherwise. The safest starting point for these scenarios combines **local-first execution**, **manual file access**, and **inbox-only output**.
+
+This configuration ensures two important guarantees: your data stays on your physical machine, and no code is ever automatically written to your disk. You receive expert advice without granting automation privileges.
+
+<BestDefault>
+**Recommended Setup for Sensitive Tasks:**
+*   **Route:** `--local-first` (Computation stays on your Mac)
+*   **Read:** `--context-read manual` (AI sees only files you explicitly name)
+*   **Write:** `--context-write inbox` (Changes appear as text drafts, not file edits)
+</BestDefault>
+
+In practice, this means the AI acts as a senior engineer sitting next to you, reading only the specific file you point to and handing you a note with suggestions. It cannot scan your entire project history, and it cannot modify a single byte of your source code without your manual intervention.
+
+Consider this workflow for reviewing authentication logic:
+
+```bash
+onlymacs --local-first --context-read manual --context-write inbox \
+  "Review auth_handler.py and explain potential race conditions"
+```
+
+In this example, OnlyMacs loads only `auth_handler.py`. It ignores `config.json`, `.env` files, or other modules unless you explicitly list them in the prompt. The output arrives in your inbox as a plain-text explanation or code snippet. You should copy, paste, and adapt any suggestions manually.
+
+<Avoid>
+**Common Mistakes in Sensitive Mode:**
+*   **Assuming local execution equals correct code:** Running locally protects privacy, not logic quality. The AI may still suggest flawed algorithms. Always verify the advice.
+*   **Relying on shell expansion:** Avoid using glob patterns like `*.py` in the prompt if you intend to be precise. Explicitly naming `auth_handler.py` prevents accidental exposure of unrelated files.
+*   **Skipping the review:** Because the output is just text, it is easy to copy-paste blindly. Treat inbox output as a draft proposal, not a final solution.
+</Avoid>
+
+Use this mode when you are unsure about the scope of a task, when analyzing security-sensitive logic, or when working near secrets. It is slower than automated modes because it requires manual application of changes, but it provides the highest guarantee of data sovereignty.
+
+## Working in Trusted Repositories: Controlled Automation
+
+Once you are operating within a repository you fully control-such as a private project on your personal machine-you can safely increase automation while maintaining strong safeguards. The goal here shifts from total isolation to efficient, verified iteration.
+
+To enable this, combine **trusted-only execution** with **git-aware context** and **staged writes**. The AI can read the relevant commit history and place proposed fixes in the git staging area, where you can review them before they touch your working files.
+
+<Decision>
+**When to use Trusted Repository Mode:**
+*   **Yes:** Fixing bugs in your own private repository where git history provides necessary context.
+*   **Yes:** Refactoring code where understanding previous commits is essential.
+*   **Yes:** Tasks requiring test validation before acceptance.
+*   **No:** Shared machines or team repositories where others might not expect automated changes.
+*   **No:** Vague prompts like "clean up the whole app." Scope must remain focused.
+</Decision>
+
+The workflow typically looks like this:
+
+```bash
+onlymacs --trusted-only --context-read git --context-write staged --allow-tests \
+  "Fix the null reference in user_profile.js"
+```
+
+Here, the AI inspects the `.git` directory to understand the current branch state and recent diffs. It generates a fix scoped to the relevant files and applies the change *only* to the git index (staged). If you have configured tests, it runs them automatically. If tests fail, the system rolls back the staged changes.
+
+You retain full control because the changes are not yet committed. You can inspect exactly what will happen using standard git tools:
+
+```bash
+git diff --cached
+```
+
+If the diff looks correct, you commit it. If not, you run `git reset` to discard the staged changes and try again with a refined prompt. Staging acts as a important buffer between suggestion and permanence, preventing unexpected overwrites of your working directory.
+
+<Recipe>
+**Safe Iteration Workflow:**
+1.  Ensure your working tree is clean (`git status`).
+2.  Run the command with `--context-write staged` and `--allow-tests`.
+3.  Inspect the result with `git diff --cached`.
+4.  If satisfied, run `git commit`. If not, run `git reset`.
+</Recipe>
+
+<Avoid>
+**Pitfalls in Trusted Mode:**
+*   **Unreliable tests:** The `--allow-tests` flag relies on your test suite being deterministic. Flaky tests will cause the AI to rollback valid changes or accept invalid ones.
+*   **Broad scopes:** Even in a trusted repo, asking the AI to "optimize the backend" without specific targets can lead to unintended refactors. Stick to one focused task per run.
+*   **Shared responsibility:** Avoid using `--trusted-only` on a team repo unless all collaborators agree to this automated workflow.
+</Avoid>
+
+## Handling Public Content: Efficiency Over Isolation
+
+For tasks involving open-source documentation, public release notes, or community-facing text, strict isolation is often unnecessary overhead. Since the input data is already public, the primary goal shifts to speed and fluency.
+
+In these scenarios, you can use **remote-first execution** to offload processing to capable cloud models. This often yields higher-quality prose and faster response times for natural language tasks.
+
+<BestDefault>
+**Recommended Setup for Public Text:**
+*   **Route:** `--remote-first` (Uses cloud models for better fluency)
+*   **Simplicity:** `--simple` (Reduces overhead for basic text refinement)
+*   **Write:** `--context-write inbox` (Still recommended to review before publishing)
+</BestDefault>
+
+Example usage for refining a changelog:
+
+```bash
+onlymacs --remote-first --simple \
+  "Make this changelog more concise and user-friendly"
+```
+
+While this mode is efficient, it requires discipline regarding input sanitization. Just because a file is in a public repo does not mean every line within it is safe to transmit. Internal identifiers, hardcoded IP addresses, or architectural hints embedded in comments can leak sensitive information even in public projects.
+
+<Avoid>
+**Data Leakage Risks in Public Mode:**
+*   **Piping entire config files:** Avoid piping a full `config.json` or log file to a remote model, even if you think it is redacted. Patterns can reveal architecture.
+*   **Including internal identifiers:** Phrases like "update the API key loader for the staging cluster" reveal internal infrastructure details.
+*   **Assuming "public repo" means "safe to send":** Always extract only the specific public portion of the text you need processed.
+</Avoid>
+
+Sanitize your input before sending it. For example, describe the config change abstractly:
+
+```bash
+echo "Update the database timeout setting from 5s to 10s in the documentation" | onlymacs --remote-first --simple ...
+```
+
+This approach ensures no actual data leaves your machine while still leveraging remote intelligence for drafting.
+
+## Direct Write Mode: High Risk, Narrow Use
+
+The `--context-write direct` flag allows the AI to modify files immediately on disk. This is the highest-risk write capability in OnlyMacs. When enabled, changes are written straight to your filesystem without an intermediate staging step or inbox draft.
+
+<Note>
+**How Direct Write Behaves:**
+If the AI decides to edit three files, those files are updated before the command finishes. There is no "undo" button within OnlyMacs; your only safety net is your version control system.
+</Note>
+
+You should use direct write **only** when the task is trivial, well-scoped, and low-risk. Ideal candidates include fixing a obvious typo in a label, updating a version number, or correcting a known syntax error in a file you have open and are watching.
+
+Example of an acceptable use case:
+
+```bash
+onlymacs --trusted-only --context-write direct --allow-tests \
+  "Fix typo in settings label: 'Serer Timeout' -> 'Server Timeout'"
+```
+
+If the AI correctly identifies the file, it updates it in place and runs tests to confirm stability. Still, if the AI misidentifies the target file or misunderstands the scope, the damage is immediate.
+
+<Avoid>
+**When to Avoid Direct Write:**
+*   **Vague cleanup tasks:** "Clean up old comments" is too ambiguous. The AI might delete useful documentation.
+*   **Exploratory sessions:** Avoid using direct write when you are figuring out how a system works.
+*   **Ambiguous file names:** If multiple files could match your description, the AI might pick the wrong one.
+*   **Lack of immediate verification:** If you cannot run `git diff` immediately after the command, avoid using direct write.
+</Avoid>
+
+The required workflow for direct write involves immediate verification. As soon as the command completes, run `git diff` to see exactly what changed. If anything looks unexpected, revert immediately. If you hesitate about the safety of a task, switch back to `--context-write staged` or `inbox`.
+
+## Default to Inbox Mode: Your Safety Net
+
+When in doubt, fall back to inbox mode. It is the most conservative option and the smartest default for any new or unfamiliar workflow. Inbox mode disables all automated file modifications. The AI analyzes your request and responds with explanations, strategies, or code snippets, but it touches nothing on your system.
+
+This turns OnlyMacs into a read-only advisor. It is particularly valuable when starting a new project, exploring unfamiliar codebases, or evaluating risky suggestions. You can use it to prototype solutions before applying them with higher-privilege commands.
+
+<Recipe>
+**Prototype then Apply Workflow:**
+1.  **Draft:** Run your idea in inbox mode to see the logic.
+    ```bash
+    onlymacs --local-first --context-read manual --context-write inbox \
+      "How would you fix the rate limiter bug?"
+    ```
+2.  **Review:** Read the output. Verify the logic makes sense.
+3.  **Execute:** If confident, re-run with staged writes to apply the fix.
+    ```bash
+    onlymacs --trusted-only --context-read git --context-write staged \
+      "Apply the rate limiter fix discussed above and stage it"
+    ```
+</Recipe>
+
+This staged approach reduces errors and builds confidence. It allows you to separate the intellectual work of solving a problem from the mechanical work of applying the solution.
+
+## Configuration Summary
+
+Use the following table to quickly select the right security posture for your current task.
+
+| Use Case | Execution Route | Context Read | Context Write | Tests? | Public Route OK? |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Sensitive / Unknown** | `--local-first` | `manual` | `inbox` | No | No |
+| **Trusted Private Repo** | `--trusted-only` | `git` | `staged` | Yes | No |
+| **Public Text Refinement** | `--remote-first` | `manual` | `inbox` | No | Yes |
+| **Trivial Fix (Rare)** | `--trusted-only` | `git` | `direct` | Yes | No |
+
+<Note>
+**Golden Rule:** Data should only leave This Mac when you intentionally choose a wider route, and it should only leave your trusted Macs when you intentionally choose a public-safe route. Nothing changes your files unless the write mode and policy both allow it. Start locked down and open up only as much as necessary.
+</Note>
+
+<NextStep>
+Now that you understand how to configure security boundaries, learn how to manage long-running tasks in [Extended Runs](../cli/extended-runs) and how to review results in [Inbox And Reporting](../cli/inbox-reporting).
+</NextStep>

@@ -1,0 +1,55 @@
+---
+title: File Approval
+description: Decide what OnlyMacs may read and where results should go.
+---
+# File Approval
+
+File approval is the review point between your Mac and a worker. OnlyMacs may ask
+to read project context or place a result somewhere reviewable. Treat those
+prompts like upload and edit approvals.
+
+<Learn>
+Route choice decides where work can run. File approval decides what context is
+allowed into that run and how results come back.
+</Learn>
+
+---
+
+## Approval Rules
+
+| Situation | Safer choice |
+| :--- | :--- |
+| Sensitive file, secret, config, or log | Use local-first and approve only what is needed |
+| Private repo review | Use trusted-only and review requested context |
+| Public-safe copy | Remote-first can be acceptable |
+| Proposed code changes | Review the diff before committing |
+| Unsure what a worker needs | Ask for a report or plan first |
+
+Inside Claude Code or Codex:
+
+```text
+/onlymacs go local-first "draft a local-only checklist for reviewing secrets"
+```
+
+```text
+/onlymacs go trusted-only "review my current diff"
+```
+
+---
+
+## Reviewable Results
+
+OnlyMacs should make generated work reviewable. Reports and plans should be read
+before use. Code changes should be inspected in your normal developer tool
+before commit. Direct writes are for advanced, trusted workflows only.
+
+<Avoid>
+Avoid approving broad context for a public-safe route just because the task looks
+small. Paths, stack traces, screenshots, logs, and config names can reveal more
+than expected.
+</Avoid>
+
+<NextStep>
+Next, read [Choose a Route](/docs/routes) for trust boundaries or
+[Activity](/docs/mac-app/activity) to find where a result landed.
+</NextStep>

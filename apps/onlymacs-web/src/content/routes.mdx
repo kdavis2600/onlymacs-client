@@ -1,0 +1,103 @@
+---
+title: Choose a Route
+description: Pick local-first, trusted-only, or remote-first without overthinking it.
+---
+# Choose a Route
+
+A route is the trust boundary for an OnlyMacs request. It tells OnlyMacs whether
+the work should stay on This Mac, use Macs you trust, or use public-safe remote
+capacity.
+
+Most users choose the route inside Claude Code or Codex:
+
+```text
+/onlymacs go local-first "draft a local-only checklist for reviewing secrets"
+```
+
+```text
+/onlymacs go trusted-only "review my current diff"
+```
+
+```text
+/onlymacs go remote-first "draft 10 public launch headlines for a Mac AI assistant"
+```
+
+<BestDefault>
+When in doubt, use `local-first` for sensitive work and `trusted-only` for
+private work that can use your approved Macs. Use `remote-first` only for input
+you would be comfortable sharing outside your trusted devices.
+</BestDefault>
+
+---
+
+## Local-First
+
+Use `local-first` when the request should stay on the Mac in front of you. This
+is the right default for secrets, logs, configs, customer data, unreleased
+features, legal material, or anything you would not paste into a public channel.
+
+```text
+/onlymacs go local-first "review this pasted config checklist for privacy risks"
+```
+
+If the job is too large for this Mac, OnlyMacs should fail, wait, or ask you to
+choose a wider route instead of silently sending private input elsewhere.
+
+---
+
+## Trusted-Only
+
+Use `trusted-only` when private work can run on Macs you own or explicitly
+trust. This is the route for private repositories, internal docs, and heavier
+analysis that should stay inside your approved machines.
+
+```text
+/onlymacs go trusted-only "review my current diff"
+```
+
+If no trusted worker is visible, open the menu bar app and check **Current
+Swarm** and **Runtime**. Do not switch to a public route unless the input is safe
+to share.
+
+---
+
+## Remote-First
+
+Use `remote-first` for public-safe work where throughput matters: public docs,
+marketing copy, public support articles, open-source snippets, sanitized
+examples, or brainstorming that does not include private context.
+
+```text
+/onlymacs go remote-first "draft 10 public launch headlines for a Mac AI assistant"
+```
+
+Before using this route, ask whether the prompt and approved input would be safe
+to share outside your trusted devices. If the answer is no, use `local-first` or
+`trusted-only`.
+
+---
+
+## Wider Work
+
+Some work can be split across multiple Macs: broad reviews, docs passes, repo
+mapping, test planning, or content batches. Start with a clear trusted-only
+prompt and let OnlyMacs plan the work from the context you approve.
+
+```text
+/onlymacs go trusted-only "review this project and suggest which tasks should be split across worker Macs"
+```
+
+Avoid specifying agent counts until you understand the available worker Macs and
+the task has clear context.
+
+<Avoid>
+Avoid using route words as shortcuts around privacy. Faster is not better if the
+request includes private code, credentials, customer data, unreleased business
+plans, stack traces, or internal URLs.
+</Avoid>
+
+<NextStep>
+Next, use [Claude Code And Codex](/docs/assistants) for assistant-first examples
+or [Menu Bar](/docs/mac-app/menu-bar) to check swarm and runtime state in the
+app.
+</NextStep>

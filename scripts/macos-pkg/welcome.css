@@ -1,0 +1,24 @@
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #efe6d8;
+}
+
+body {
+  display: flex;
+}
+
+.welcome-art-shell {
+  width: 100%;
+  height: 100%;
+}
+
+.welcome-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

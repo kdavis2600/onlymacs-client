@@ -1,0 +1,52 @@
+---
+title: Settings
+description: Configure OnlyMacs defaults, updates, diagnostics, and support export.
+---
+# Settings
+
+Settings is where you review defaults and collect support evidence. Most users
+should change settings through the app instead of editing files or passing
+terminal flags by habit.
+
+<Learn>
+Settings affects the defaults. Individual `/onlymacs` requests can still choose
+local-first, trusted-only, or remote-first when the trust boundary matters.
+</Learn>
+
+---
+
+## Useful Settings
+
+| Setting area | Use it for |
+| :--- | :--- |
+| Routes | Default local, trusted, or public-safe posture |
+| Launchers | Keeping Claude Code, Codex, and optional terminal helpers current |
+| Updates | Staying on the current app version |
+| Diagnostics | Exporting support bundles |
+| Privacy | Reviewing what data can be included in diagnostics |
+
+For sensitive requests, still spell out the route in the assistant:
+
+```text
+/onlymacs go local-first "draft a local-only checklist for reviewing secrets"
+```
+
+---
+
+## Support Bundles
+
+When support needs evidence, use the app's export support bundle action. It
+collects useful Runtime and Activity state without asking you to paste raw logs.
+
+Review the bundle before sending. Known secrets are redacted, but paths, machine
+names, and system details can still appear.
+
+<Avoid>
+Avoid changing hidden config files by hand. If a setting is exposed in the app,
+use the app so validation and repair steps stay consistent.
+</Avoid>
+
+<NextStep>
+Next, open [Runtime](/docs/mac-app/runtime) for repair actions or
+[Activity](/docs/mac-app/activity) to inspect recent requests.
+</NextStep>

@@ -1,0 +1,270 @@
+---
+title: 10 Example Personas
+description: Ten practical examples showing what each person is building, where they should start, and which parameters fit.
+---
+# 10 Example Personas
+
+These scenarios are practical blueprints for using OnlyMacs safely and effectively. Instead of memorizing flags, you will learn to match your work context to the right execution mode. Every persona below follows a consistent logic: identify your security boundary (can this data leave the machine?), define your output destination (do you need changes staged or just reviewed?), and assess your workload scale (is this a single task or many parallel ones?).
+
+Use these examples as templates. Swap the task description to fit your needs, adjust the flags based on your constraints, and pay close attention to the "What to avoid" sections to prevent common workflow errors.
+
+<Learn>
+Before running any command, ask three questions:
+1. **Security:** Does this code or data contain secrets, PII, or proprietary logic? If yes, use `--trusted-only` or `--local-first`.
+2. **Output:** Do I want the AI to edit files directly, stage them for review, or just give me a report? Choose `--context-write` accordingly (`direct`, `staged`, or `inbox`).
+3. **Scale:** Is this a deep analysis of one file or a broad sweep of many? Use `--extended` for depth and `--go-wide` for breadth.
+</Learn>
+
+---
+
+## 1. Indie SaaS Founder: Billing Dashboard
+
+When working with financial systems like billing logic, payment webhooks, or subscription state machines, you are handling code that directly impacts revenue and compliance. This is sensitive work, so the priority is safety: keep secrets on your machine and make sure no unreviewed changes reach production.
+
+For this workflow, use `--trusted-only` to guarantee that no part of your codebase is sent to remote nodes. Even if remote providers claim security, the risk is unnecessary when money is involved. Pair this with `--context-write staged`. This prevents automatic commits and forces a manual review step in your version control system, ensuring you see every change before it lands. The `--extended` flag is important here; it enables deep cross-file analysis to trace how a user's payment flows from checkout to invoice generation, catching side effects that a shallow scan would miss.
+
+```bash
+onlymacs --trusted-only --extended --context-read git --context-write staged --allow-tests \
+  "audit billing, checkout, and webhook flows, then prepare the smallest launch-blocker fixes"
+```
+
+**Expected Outcome:** OnlyMacs analyzes your current branch, traces relevant functions across files, runs tests on proposed changes, and stages minimal, safe fixes. You review them in your Git client before committing.
+
+<BestDefault>
+Always pair `--trusted-only` with `--context-write staged` for financial code. Do not allow direct merges for AI-generated patches in revenue-important paths.
+</BestDefault>
+
+<Avoid>
+- Avoid using `--remote-first`. Sending payment-related code off-device increases your attack surface unnecessarily.
+- Avoid skipping `--allow-tests`. Untested financial logic is dangerous. Let OnlyMacs verify its own suggestions before you see them.
+</Avoid>
+
+---
+
+## 2. macOS App Developer: Menu Bar Utility
+
+Signed macOS apps depend entirely on correct entitlements, code signing identities, and notarization setups. A single typo in an `.entitlements` file can break your build pipeline or cause Apple to reject your submission. Your local repository likely contains private signing assets like provisioning profiles or automated notarization scripts, which must not be exposed to external systems.
+
+Use `--local-first` to keep all processing on your Mac. This allows orchestration of tasks like config review without sending sensitive build configurations elsewhere. Direct the output to `inbox` using `--context-write inbox`. This creates a sandbox outside your version control where you can inspect recommendations before applying them to your actual build process, especially recommendations about security-scoped bookmarks or hardened runtime settings.
+
+```bash
+onlymacs --local-first --context-read git --context-write inbox \
+  "review signing, entitlements, updater config, and release steps for risky gaps"
+```
+
+**How It Works:** OnlyMacs reads your current code and configuration files, checks for known issues (such as missing `com.apple.security.cs.allow-jit`), and writes findings to your inbox.
+
+<Decision>
+Why use `inbox` instead of `staged`? Signing changes are often subtle but impactful. Staging them immediately risks creating a broken binary that takes significant time to debug. Using `inbox` acts as an inspection layer, letting you catch edge cases before they touch your source tree.
+</Decision>
+
+<Avoid>
+- Avoid `--context-write staged` unless you have already validated similar changes in previous runs.
+- Avoid relying on `--remote-first`. Even anonymized signing configs can leak patterns about your deployment strategy.
+</Avoid>
+
+---
+
+## 3. Frontend Agency Lead: Marketing Site
+
+Marketing sites are usually public-facing and non-sensitive, allowing you to prioritize speed. Still, speed should not come at the cost of quality; layout shifts, accessibility oversights, or broken mobile views still damage credibility. Since the content is not confidential, you can safely use `--trusted-only` (or even `--remote-first` if preferred) and use parallelism to improve responsiveness.
+
+Use `--go-wide=4` to split the work into four independent lanes: one for copy improvements, one for layout tweaks, one for SEO metadata, and one for responsive testing. Keep `--context-write staged` so changes are ready for final approval, and combine this with `--allow-tests` to automatically check for visual regressions or hydration errors after updates.
+
+```bash
+onlymacs --go-wide=4 --trusted-only --context-read git --context-write staged --allow-tests \
+  "build landing page improvements and smoke-test desktop and mobile layouts"
+```
+
+**Expected Outcome:** Four independent sets of changes appear in your staging area, each focused on a specific aspect of the page. You can accept some, reject others, and refine further.
+
+<Recipe>
+**Parallelism Tip:** For `--go-wide` to work effectively, your task must describe clearly separable concerns. If all lanes try to edit the same component, conflicts arise. Structure your prompt to isolate domains, for example: "improve hero section," "optimize form CTA," "fix mobile nav," and "update meta tags."
+</Recipe>
+
+<Avoid>
+- Avoid setting `--go-wide` higher than your CPU cores can handle efficiently. Over-subscription slows everything down.
+- Avoid omitting `--allow-tests`. Aesthetic changes can break functionality silently.
+</Avoid>
+
+---
+
+## 4. AI Education Builder: Content Pack
+
+Building educational material-lessons, exercises, examples, and QA checks-is inherently modular. Each piece has a clear role and minimal overlap, making it ideal for full parallelization. If your curriculum includes proprietary teaching methods or unreleased content, use `--trusted-only` to prevent exposure. Set `--go-wide=max` to utilize all available trusted compute resources on your machine.
+
+Enable `--extended` mode so the system maintains a consistent tone, difficulty level, and terminology across all generated content. Without this flag, different lanes may produce mismatched styles or conflicting explanations, resulting in a disjointed course.
+
+```bash
+onlymacs --go-wide=max --trusted-only --extended \
+  "generate and validate the next content pack with separate lanes for lessons, examples, exercises, and QA"
+```
+
+**Behavior:** OnlyMacs spawns multiple isolated workers, each responsible for one type of output. They share context via `--extended` to stay aligned on structure and voice while operating independently to maximize throughput.
+
+<Note>
+**Scaling Advice:** Start with `--go-wide=4` if you are unsure of your system's capacity. Monitor CPU and memory usage. If your system becomes sluggish, reduce the count. Once stable, increase incrementally.
+</Note>
+
+<Avoid>
+- Avoid running `--go-wide=max` on a machine already under heavy load; it degrades performance across all tasks.
+- Avoid skipping `--extended` when consistency matters. It is the difference between a cohesive course and a patchwork of unrelated snippets.
+</Avoid>
+
+---
+
+## 5. Security Engineer: Authentication Review
+
+Security reviews demand isolation. You are analyzing potential vulnerabilities like token leakage, redirect flaws, or session fixation risks, and those details must not leave your machine. Use `--local-first` to guarantee execution happens entirely locally, with no fallback to remote nodes and no caching outside your control. Add `--simple` to minimize background processes and reduce noise during analysis.
+
+Set `--context-read manual` because you are likely feeding in a specific code snippet or diff rather than scanning the whole repo. Write results to `inbox` so they do not interfere with active development.
+
+```bash
+onlymacs --local-first --simple --context-read manual --context-write inbox \
+  "review this auth change for token leakage, weak redirects, and unsafe logging"
+```
+
+**Typical Flow:** You paste a function or diff into stdin or a temporary file. OnlyMacs analyzes it, identifies red flags, and delivers a report to your inbox for review.
+
+<Decision>
+**Why not staged?** Automatic code changes in security-important areas are risky. A suggested fix might patch one issue while introducing another, such as weakening entropy. Keep humans in the loop by using `--context-write inbox` as your default until you have verified the recommendation.
+</Decision>
+
+<Avoid>
+- Avoid using `--remote-first` or disable trusted modes when reviewing vulnerabilities.
+- Avoid `--context-write staged` unless you are certain the change is trivial and well-tested.
+</Avoid>
+
+---
+
+## 6. Startup CTO: Monorepo Migration
+
+Monorepo migrations are complex, high-use operations where one misstep can block dozens of engineers. Success depends on strict adherence to a pre-approved plan, not improvisation. Use the `--plan` flag to point to a documented strategy file (e.g., `plans/migration.md`). This instructs OnlyMacs to follow steps exactly, pausing when human judgment is needed.
+
+Run with `--trusted-only` to keep sensitive dependency graphs and internal package structures on your machine. Use `--context-write staged` so each phase produces a clean, reviewable commit. Include `--allow-tests` to verify integrity after each step, as renaming packages or moving directories often breaks imports.
+
+```bash
+onlymacs --trusted-only --plan:plans/migration.md --context-read git --context-write staged --allow-tests \
+  "execute this migration plan and stop if a step needs human approval"
+```
+
+**Execution Logic:** OnlyMacs reads the plan line-by-line. When it hits a step marked "await approval," it stops and waits for confirmation. Otherwise, it proceeds cautiously, testing each change.
+
+<Recipe>
+**Preflight Checklist:**
+1. Ensure your plan file explicitly marks decision points.
+2. Test the migration on a fork or subset first.
+3. Back up important state before starting.
+4. Version-control your plan file; treat it like infrastructure-as-code.
+</Recipe>
+
+<Avoid>
+- Avoid running without a plan. Unstructured migrations invite chaos.
+- Avoid disabling `--allow-tests`. Broken builds waste more time than slow, verified progress.
+</Avoid>
+
+---
+
+## 7. Open-Source Maintainer: Triage
+
+Public GitHub issues are already visible to the world, so there is no privacy risk in processing them remotely. You can save local resources by using `--remote-first`. The task of labeling, routing, and suggesting next actions is lightweight and repetitive, making it perfect for automation. Use `--simple` mode to keep overhead low.
+
+You generally do not need to stage code changes for triage. Most outcomes are recommendations you will apply manually in the GitHub UI. Therefore, you can omit `--context-write`; by default, output goes to stdout or inbox depending on your configuration.
+
+```bash
+onlymacs --remote-first --simple \
+  "triage these public issue summaries into labels, likely owners, and next actions"
+```
+
+**Expected Result:** A structured list mapping each issue to a label (bug, feature, question), probable team member, and suggested response (e.g., "ask for repro steps," "close as duplicate").
+
+<Note>
+**Safety Check:** Before enabling remote processing, scan inputs for accidental inclusion of private info like internal error logs, user IDs, or unreleased roadmap items. If found, switch to `--trusted-only`.
+</Note>
+
+<Avoid>
+- Use this pattern only for truly public data. When in doubt, default to local processing.
+</Avoid>
+
+---
+
+## 8. Data Ops Builder: Internal Dashboard
+
+Internal dashboards visualize private data such as user behavior, business metrics, and system health. Even if the code itself is generic, the *meaning* behind the charts is sensitive. Always use `--trusted-only`. Your data schema, access controls, and failure assumptions should stay in your environment.
+
+Write output to `inbox` so you can evaluate architectural suggestions-like adding rate limiting or handling null states-before modifying any code.
+
+```bash
+onlymacs --trusted-only --context-read git --context-write inbox \
+  "review this dashboard plan and tell me what data, permissions, and failure states are missing"
+```
+
+**Use Case:** You are designing a new panel showing API latency trends. OnlyMacs reviews your query logic and warns: "No fallback for when Prometheus is down," or "This endpoint exposes PII without RBAC check."
+
+<Decision>
+**Why inbox?** These are design insights, not code patches. You want to think them through before implementing. Use `--context-write inbox` for any exploratory or design-phase work to create a feedback loop without altering source.
+</Decision>
+
+<Avoid>
+- Avoid generating structural changes directly to production code during the design phase.
+- Avoid assuming generic code is safe to send remotely; context matters.
+</Avoid>
+
+---
+
+## 9. Game Prototype Builder: Canvas and WebGL
+
+Game prototypes involve tightly coupled but logically distinct systems: rendering, input handling, physics, and UI overlays. These can be developed in parallel if managed carefully. Use `--go-wide=6` to assign dedicated lanes to each subsystem. Enable `--trusted-only` to protect proprietary game mechanics. Keep output `staged` so you can test visuals and interactions before committing.
+
+Add `--allow-tests` to run quick render checks, catching issues like flickering sprites or incorrect Z-ordering early.
+
+```bash
+onlymacs --go-wide=6 --trusted-only --context-read git --context-write staged --allow-tests \
+  "implement the prototype improvements and run render smoke checks"
+```
+
+**Benefit:** You get simultaneous progress on six fronts, each isolated enough to avoid interference but coordinated enough to fit together later.
+
+<Note>
+**Parallelism Warning:** If your game state is shared globally (e.g., a singleton game manager), parallel lanes may conflict. To avoid this, break state into modules or reduce `--go-wide` to 2-3 and iterate more frequently.
+</Note>
+
+<Avoid>
+- Avoid over-parallelizing tightly interdependent logic.
+- Avoid skipping `--allow-tests`; visual regressions are costly to fix late.
+</Avoid>
+
+---
+
+## 10. Solo Consultant: Proposal Drafting
+
+Proposal drafting hinges on sensitivity. Are your client notes public, anonymized, or confidential? If the notes contain pricing models, internal pain points, or strategic roadmaps, use `--local-first` to ensure nothing leaves your machine. If the content is fully public or anonymized, `--remote-first` saves battery and speeds things up. In both cases, `--simple` is sufficient since this is text structuring, not code generation.
+
+**For public or anonymized notes:**
+```bash
+onlymacs --remote-first --simple \
+  "turn these client notes into a concise proposal outline with scope, timeline, and risks"
+```
+
+**For private or confidential notes:**
+```bash
+onlymacs --local-first --simple \
+  "turn these private client notes into a concise proposal outline with scope, timeline, and risks"
+```
+
+<Decision>
+**Decision Rule:** Ask yourself: *"If this leaked, would it harm my relationship?"* If yes, use `--local-first`. If no, `--remote-first` is acceptable.
+</Decision>
+
+<Recipe>
+**Workflow Tip:** Run iteratively. Generate an outline, refine the prompt (e.g., "add budget breakdown"), and regenerate. Use `--simple` to keep responses snappy.
+</Recipe>
+
+<Avoid>
+- Avoid assuming anonymized equals safe. Sometimes combinations of facts can re-identify clients.
+- Avoid draft sensitive proposals on shared machines; even with `--local-first`, physical access matters.
+</Avoid>
+
+<NextStep>
+Now that you understand how to match personas to execution modes, try running a small experiment on your own project. Pick one of the workflows above, adapt the prompt to your current task, and observe how the `--context-write` and security flags change the outcome. Next, explore [Context Files](/docs/reference/context-files) to deepen your understanding of how OnlyMacs reads and writes your project files.
+</NextStep>

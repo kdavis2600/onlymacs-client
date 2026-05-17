@@ -1,0 +1,144 @@
+---
+title: Quickstart
+description: Get OnlyMacs running from the menu bar app, Claude Code, or Codex.
+---
+# Quickstart
+
+This quickstart is for people who want to use OnlyMacs without becoming command
+line operators. Start with the menu bar app, then ask Claude Code or Codex to
+route work through OnlyMacs with `/onlymacs`.
+
+The terminal is still available for developers and support, but it is not the
+main beginner workflow.
+
+<Learn>
+OnlyMacs has three everyday surfaces:
+
+The **menu bar app** keeps the runtime alive and shows whether swarms, models,
+and sharing are ready.
+
+**Claude Code or Codex** is where you ask for work with `/onlymacs`.
+
+The **CLI Reference** is for advanced diagnostics, automation, and support
+sessions.
+</Learn>
+
+---
+
+## Install And Open The App
+
+Install OnlyMacs, then open it from Applications or Spotlight. Leave it running
+in the menu bar.
+
+In the menu bar popup, look for the basic ready state:
+
+| Area | What you want to see |
+| :--- | :--- |
+| Runtime | Ready or connected |
+| Current Swarm | The swarm you expect to use |
+| Models | At least one usable model or route |
+| Activity | Recent `/onlymacs` requests when you run them |
+
+If anything looks offline, use the app's Runtime repair or restart action before
+you try a real request. Do not start by pasting terminal commands unless support
+asks you to.
+
+<BestDefault>
+When OnlyMacs has just been installed or repaired, reopen Claude Code or Codex.
+Assistants can keep an old environment alive, so reopening them is often what
+makes the `/onlymacs` launcher appear.
+</BestDefault>
+
+---
+
+## Send Your First Request From Claude Code Or Codex
+
+Open Claude Code or Codex in the project or folder you want to work with. Start
+with a prompt-only request that does not need private files:
+
+```text
+/onlymacs "brainstorm three launch taglines for a Mac AI assistant"
+```
+
+If that works, try a local-only request:
+
+```text
+/onlymacs go local-first "draft a local-only checklist for reviewing secrets"
+```
+
+If you are working in a private project and want to use your trusted Macs, try:
+
+```text
+/onlymacs go trusted-only "review my current diff"
+```
+
+If the input is public-safe, you can ask for a remote-first route:
+
+```text
+/onlymacs go remote-first "draft 10 public launch headlines for a Mac AI assistant"
+```
+
+These examples intentionally avoid extra flags. The app and assistant workflow
+should teach the route first; deeper file and write controls can come later.
+
+---
+
+## Choose The Route In Plain English
+
+Use this rule of thumb before you send work:
+
+| Route | Use it for | Avoid it for |
+| :--- | :--- | :--- |
+| `local-first` | Secrets, logs, sensitive configs, local-only review | Big jobs that need more capacity than this Mac has |
+| `trusted-only` | Private code, internal docs, your own approved Macs | Public community capacity |
+| `remote-first` | Public copy, public docs, safe batch text | Private repositories, customer data, unreleased plans |
+
+If you are unsure, use `local-first` or `trusted-only`. Do not switch a private
+task to a public route just because the public swarm looks faster.
+
+---
+
+## Check Status In The App
+
+For normal use, the menu bar app is the diagnostic surface:
+
+1. Use **Current Swarm** to confirm which swarm you are connected to.
+2. Use **Runtime** to repair or restart local services.
+3. Use **Activity** to see the latest `/onlymacs` request and outcome.
+4. Use **Models** to see whether usable local or swarm models are available.
+5. Use the app's support bundle export when support needs evidence.
+
+If a public swarm is missing, check the app first. Confirm the runtime is ready,
+the current swarm is what you expect, and the assistant was reopened after any
+repair. Then try the `/onlymacs` request again.
+
+<Troubleshooting>
+For support-led troubleshooting, you can run `/onlymacs check` inside Claude Code
+or Codex. Use terminal commands only when you need developer-level output or
+support specifically asks for it.
+</Troubleshooting>
+
+---
+
+## Review Results Before Applying Them
+
+OnlyMacs results are proposals. For reports, read the answer and decide whether
+to use it. For code changes, inspect the diff before committing. For public-swarm
+work, verify that the input was safe to send and that the output is accurate.
+
+Good early tasks are easy to review:
+
+| Good first task | Why it is safe |
+| :--- | :--- |
+| Explain a folder or current diff | Read-only and easy to judge |
+| Draft release notes | Useful but low-risk |
+| Review public copy | Safe for remote-first if the copy is public |
+| Identify risky files | Produces a report before any edits |
+| Suggest worker-Mac jobs | Helps you learn what to offload |
+
+<NextStep>
+Next, read [Claude Code And Codex](/docs/assistants) for assistant-first
+workflows, or open [The App](/docs/mac-app) to learn what each menu bar section
+means. Use the [CLI Reference](/docs/cli) only when you want terminal-level
+control.
+</NextStep>

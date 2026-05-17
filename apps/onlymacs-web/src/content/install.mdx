@@ -1,0 +1,90 @@
+---
+title: Install OnlyMacs
+description: Install the Mac app, connect Claude Code or Codex, and confirm the runtime is ready.
+---
+# Install OnlyMacs
+
+Installing OnlyMacs means installing the Mac app that keeps the local runtime
+alive. The app is the thing to open, check, and repair. Claude Code, Codex, and
+optional terminal tools connect to that app-managed runtime.
+
+<Learn>
+For most users, installation is complete when the app is running in the menu bar
+and `/onlymacs` works inside Claude Code or Codex. Terminal setup is optional
+unless you want developer diagnostics or automation.
+</Learn>
+
+---
+
+## Step 1: Install And Open The App
+
+Run the installer, then open **OnlyMacs** from Applications or Spotlight. Leave
+it running in the menu bar.
+
+After first launch, handle any macOS permission prompts. If macOS blocks the app,
+open **System Settings > Privacy & Security** and approve it there.
+
+<BestDefault>
+Confirm these three things before trying an assistant request:
+
+1. The OnlyMacs icon is visible in the menu bar.
+2. The Runtime view does not show a blocking error.
+3. No macOS permission prompt is waiting for you.
+</BestDefault>
+
+---
+
+## Step 2: Connect Claude Code Or Codex
+
+Open the app's **Tools** section and install or refresh the Claude Code and Codex
+launchers. Then reopen Claude Code or Codex so the assistant picks up the latest
+launcher.
+
+Inside the assistant, test with:
+
+```text
+/onlymacs check
+```
+
+Then try a prompt-only request:
+
+```text
+/onlymacs "brainstorm three launch taglines for a Mac AI assistant"
+```
+
+If the assistant does not recognize `/onlymacs`, return to **Tools**, refresh
+launchers, and reopen the assistant again. Avoid editing shell profiles or app
+bundle paths by hand.
+
+---
+
+## Step 3: Check The Menu Bar App
+
+Use the app instead of terminal commands for first-line validation:
+
+| App section | What to confirm |
+| :--- | :--- |
+| Runtime | Ready, connected, or repairable |
+| Current Swarm | The swarm you expect |
+| Models | At least one usable local or swarm model |
+| Activity | Your latest `/onlymacs` request appears |
+| Settings | Support bundle export is available if support asks |
+
+If a worker or public swarm is missing, check **Current Swarm** and **Runtime**.
+If launchers were repaired, reopen Claude Code or Codex before trying again.
+
+---
+
+## Optional: Terminal Tools
+
+Developers can also install the terminal launcher from **Tools**. That enables
+commands such as `onlymacs check` for scripts and support sessions, but it is not
+required for normal assistant use.
+
+If support asks for terminal output, open a fresh terminal after refreshing
+launchers. Otherwise, stay with the app and assistant workflow.
+
+<NextStep>
+Next, follow the [Quickstart](/docs/quickstart), then use
+[Claude Code And Codex](/docs/assistants) for everyday request examples.
+</NextStep>

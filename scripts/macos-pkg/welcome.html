@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>OnlyMacs Technical Install Summary</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      color-scheme: light dark;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+    }
+
+    body {
+      padding: 44px 52px;
+      box-sizing: border-box;
+    }
+
+    main {
+      max-width: 680px;
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      font-size: 15px;
+      line-height: 1.3;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 30px;
+      line-height: 1.12;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.95);
+    }
+
+    p,
+    li {
+      font-size: 14px;
+      line-height: 1.42;
+      color: rgba(255, 255, 255, 0.74);
+    }
+
+    p {
+      margin: 0 0 14px;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    li + li {
+      margin-top: 7px;
+    }
+
+    code {
+      font-family: "SF Mono", Menlo, monospace;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.88);
+    }
+
+    @media (prefers-color-scheme: light) {
+      .eyebrow {
+        color: rgba(28, 28, 30, 0.68);
+      }
+
+      h1 {
+        color: rgba(28, 28, 30, 0.96);
+      }
+
+      p,
+      li {
+        color: rgba(28, 28, 30, 0.72);
+      }
+
+      code {
+        color: rgba(28, 28, 30, 0.88);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">OnlyMacs technical install summary</p>
+    <h1>Mac menu bar app, CLI, and approved local AI routes.</h1>
+    <p>This package installs the current OnlyMacs product surface described by the README standard: one native Mac app, one branded command path, and explicit trust boundaries for file-aware work.</p>
+    <ul>
+      <li>Installs <strong>OnlyMacs.app</strong>, the local bridge, and the <code>onlymacs</code> launcher used by <code>/onlymacs</code>.</li>
+      <li>Optionally installs Codex and Claude Code skills/slash commands so supported tools can call the same launcher.</li>
+      <li>Uses Ollama for local model hosting when available; the app exposes setup and starter-model controls after install.</li>
+      <li>Routes work across Public, Private, and Local-First modes. File-aware remote work requires explicit approval and read-only export; no public repo browsing or hidden write-back.</li>
+      <li>Includes the in-app recipe section for common <code>/onlymacs</code> review, generation, transform, planning, and local-first commands.</li>
+    </ul>
+  </main>
+</body>
+</html>

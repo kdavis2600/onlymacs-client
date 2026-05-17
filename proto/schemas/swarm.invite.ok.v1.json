@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "swarm.invite.ok.v1",
+  "type": "object",
+  "required": ["invite"],
+  "properties": {
+    "invite": {
+      "type": "object",
+      "required": ["invite_token", "swarm_id", "swarm_name"],
+      "properties": {
+        "invite_token": { "type": "string" },
+        "swarm_id": { "type": "string" },
+        "swarm_name": { "type": "string" }
+      }
+    }
+  }
+}

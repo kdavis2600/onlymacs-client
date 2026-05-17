@@ -1,0 +1,20 @@
+{
+  "provider": {
+    "id": "charles-m5",
+    "name": "Charles's Mac Studio",
+    "status": "available",
+    "modes": ["share", "both"],
+    "slots": {
+      "free": 2,
+      "total": 2
+    },
+    "models": [
+      {
+        "id": "qwen2.5-coder:32b",
+        "name": "Qwen2.5 Coder 32B",
+        "slots_free": 2,
+        "slots_total": 2
+      }
+    ]
+  }
+}

@@ -1,0 +1,145 @@
+---
+title: Context Files
+description: Use plan files, git-backed context, context packs, inbox artifacts, and staged output.
+---
+# Context Files
+
+OnlyMacs performs best when it understands exactly what you know, what you want to change, and where the results should land. This combination of inputs and outputs is called "context." If you give OnlyMacs vague inputs, it must guess your intent, which leads to wasted time or incorrect code. If you provide precise context files and clear output destinations, it follows the intended workflow instead of improvising. This page shows you how to select the right input source for your task and how to route the output safely.
+
+<Learn>
+Context in OnlyMacs has two distinct sides: **Read** (where the AI gets its information) and **Write** (where it puts the result).
+- **Read Modes**: `git` (live code), `packs` (static knowledge), `manual` (specific files), or `full-project`.
+- **Write Modes**: `inbox` (safe drafts), `staged` (git patches), `direct` (immediate file changes), or `read-only` (analysis only).
+Choosing the wrong pair is the most common cause of frustration. For example, using a static knowledge pack to fix a live bug will fail because the pack doesn't know about your current code. Using `direct` write mode for an exploratory task risks overwriting files you meant to keep.
+</Learn>
+
+## Plan Files: Enforcing Strict Procedures
+
+A plan file is a Markdown document that serves as an executable script for OnlyMacs. Unlike a normal prompt where the AI decides the steps, a plan file dictates the exact sequence of operations. When you invoke a plan, OnlyMacs stops improvising and starts following orders. This mode turns the AI into an automated executor, which helps with sensitive workflows like releases, migrations, or compliance audits where deviation is not acceptable.
+
+You should reach for a plan file when the "how" is already solved and only the "do" remains. If you are still figuring out the solution, avoid using a plan file; use `git` context instead. Plan files are useful when you need to repeat a complex process the same way across multiple environments or make sure a specific safety check is not skipped. Because plans assume a controlled environment, they work best when paired with the `--trusted-only` flag, which restricts the AI to files you have explicitly versioned or approved, preventing it from pulling in unexpected external data.
+
+<BestDefault>
+For production workflows, always combine plan execution with test validation. This ensures the plan doesn't just run, but verifies its own success.
+
+```bash
+onlymacs --plan:plans/release.md --trusted-only --allow-tests \
+  "execute this release plan strictly"
+```
+</BestDefault>
+
+<Avoid>
+Avoid using open-ended prompts like "see what needs fixing" when running a plan file. The plan *is* the prompt. Adding vague instructions can confuse the execution engine. Also, avoid omitting `--allow-tests` if your plan includes verification steps; without this flag, OnlyMacs may skip the test phase and report success prematurely.
+</Avoid>
+
+<Recipe>
+**Creating a Safe Migration Plan**
+1. Write your steps in `plans/migrate-db.md`.
+2. Include explicit "Verify" steps in the markdown.
+3. Run with strict constraints:
+   ```bash
+   onlymacs --plan:plans/migrate-db.md --trusted-only --allow-tests \
+     "run migration"
+   ```
+4. If the plan fails a verification step, OnlyMacs halts immediately, preventing partial states.
+</Recipe>
+
+## Git Context: Working with Live Code
+
+Git context is the default mode for active development. It allows OnlyMacs to read your repository's current state, including tracked files, staged changes, and commit history. This is the only mode that truly understands your "working truth." When you are debugging a crash, refactoring a module, or adding a feature to an existing branch, git context ensures the AI sees the code exactly as your compiler does. It bridges the gap between your editor and the AI's reasoning engine.
+
+To enable this, you explicitly set `--context-read git`. In this mode, OnlyMacs inspects the working directory and the git index. It ignores untracked temporary files unless specifically told otherwise, keeping its focus sharp. For safety, you should almost always pair this with `--trusted-only`. This constraint prevents the AI from hallucinating context by reading unrelated logs, build artifacts, or system files that happen to be in the directory. It forces the AI to rely solely on the source of truth: your version-controlled code.
+
+Git context is most useful when you pair it with a reviewable output mode. If you ask for a fix, you usually want a patch, not a lecture. By setting `--context-write staged`, OnlyMacs generates a diff and places it in your git staging area. You can then review the proposed changes with `git diff --cached` before committing. If you prefer advice without file modifications, switch the write mode to `inbox` to receive a text summary instead.
+
+<Decision>
+**Choosing Output Mode for Git Context**
+
+| Goal | Recommended Flag | Why? |
+| :--- | :--- | :--- |
+| Fix a bug or add a feature | `--context-write staged` | Creates a reviewable patch in the git index. |
+| Analyze code quality or risks | `--context-write inbox` | Returns a report without touching files. |
+| Refactor with immediate effect | `--context-write direct` | **Use with caution.** Overwrites files instantly. |
+| Read-only analysis | `--context-write read-only` | Guarantees no changes are made. |
+
+</Decision>
+
+<Example>
+**Reviewing a Current Branch**
+You are mid-feature and want to ensure your changes align with project standards before committing.
+```bash
+onlymacs --trusted-only --context-read git --context-write staged \
+  "review current branch and prepare the smallest necessary patch"
+```
+After execution, inspect the result:
+```bash
+git diff --cached
+```
+If the diff looks correct, commit it. If not, reset the stage with `git reset` and refine your prompt.
+</Example>
+
+<Avoid>
+Avoid running git context on a "dirty" working directory filled with unrelated experimental files. OnlyMacs might interpret noise as signal, leading to confused suggestions. Always commit or stash unrelated work before invoking a git-context session. Additionally, avoid using `staged` output for vague requests like "improve this app." Without a specific target, the AI may generate arbitrary changes that clutter your commit history.
+</Avoid>
+
+## Context Packs: Reusing Static Knowledge
+
+Context packs are curated collections of reference material that exist outside your immediate codebase. They can include API documentation, architectural decision records, style guides, or product specifications that you load into OnlyMacs to guide its behavior. Unlike git context, which reflects the live state of your repo, context packs are static snapshots. They provide the "background knowledge" needed to ensure consistency in tone, architecture, or compliance, especially when that knowledge lives in external tools like Notion or Confluence.
+
+Use context packs when your task requires adherence to standards that aren't encoded in the source files themselves. For instance, if you are generating API documentation that must match a specific brand voice, or writing code that must follow a legacy pattern documented in a wiki, a context pack is the right tool. You activate this with `--context-read packs`. Because these packs are informational rather than instructional, they pair naturally with `--context-write inbox`. This setup allows the AI to draft content based on the pack's rules while keeping your actual codebase untouched until you manually approve the draft.
+
+Remember that context packs do not update automatically. They represent the state of your documentation at the moment the pack was built. If your API changed yesterday but the pack was built last week, OnlyMacs will operate on outdated information. Treat packs as versioned artifacts: rebuild them when your source documentation changes significantly. Avoid relying on packs alone for logic-heavy coding tasks; they lack the structural awareness of your live file tree. For those tasks, combine `packs` with `git` context if your workflow supports multi-source reading, or stick to `git` for the primary logic and use packs only for stylistic guidance.
+
+<BestDefault>
+When drafting content based on standards, isolate the output to the inbox first.
+```bash
+onlymacs --context-read packs --context-write inbox \
+  "draft the next launch note using saved product context"
+```
+This ensures the AI uses your guidelines but doesn't accidentally overwrite existing files.
+</BestDefault>
+
+<Avoid>
+Avoid treating context packs as live databases. They are frozen in time. If you need real-time data, you should use `git` context or point the AI to specific live files via `manual` context. Also, avoid bloating your packs with irrelevant history; include only the essential guidelines needed for the current task to maintain precision.
+</Avoid>
+
+## Managing Output: Inbox vs Staged
+
+Where OnlyMacs writes its output determines the risk profile of your session. The two most common modes are `inbox` and `staged`. Understanding the difference is the key to safe automation. The `inbox` is a sandbox: a directory (typically `.onlymacs/inbox`) where results are saved as plain text or draft files. Nothing in the inbox affects your source code or git history. It is the safest place for exploration, brainstorming, and risk assessment. Use `inbox` when you want to ask "What if?" without breaking anything.
+
+By comparison, `staged` mode interacts directly with your git repository. When you use `--context-write staged`, OnlyMacs calculates the necessary file changes and applies them to the git staging area (the index). These changes are real and ready to be committed, but they are not yet part of your history. This gives you a clear review layer: you can see exactly what lines will change using `git diff --cached` before finalizing them. This mode is ideal for well-defined tasks like "fix this typo" or "add this validation," where you expect a concrete code patch rather than a discussion.
+
+<Note>
+The `staged` mode is safer than `direct` mode because it requires an explicit `git commit` to take effect. Still, it is riskier than `inbox` because it modifies your repository state. Always review staged changes before committing.
+</Note>
+
+For maximum reliability, especially when using `staged` mode, always include the `--allow-tests` flag. This permits OnlyMacs to run your project's test suite after making changes but before presenting the result. If the tests fail, OnlyMacs can revert the staged changes or report the failure, preventing you from accidentally committing broken code. Without this flag, the AI might stage a change that looks syntactically correct but fails at runtime.
+
+<Recipe>
+**Safe Patch Workflow**
+1. Request a change with test validation:
+   ```bash
+   onlymacs --context-read git --context-write staged --allow-tests \
+     "refactor the auth module and verify with existing tests"
+   ```
+2. Check the proposed changes:
+   ```bash
+   git diff --cached
+   ```
+3. If the diff looks good and tests passed, commit:
+   ```bash
+   git commit -m "Refactor auth module"
+   ```
+4. If tests failed or the diff is wrong, reset:
+   ```bash
+   git reset
+   ```
+</Recipe>
+
+<Avoid>
+Avoid using `staged` mode for vague, open-ended prompts like "optimize this entire codebase." The AI might interpret this as license to rewrite large portions of your application, creating a massive, unreviewable diff. For broad improvements, start with `inbox` to get a plan or analysis, then apply changes incrementally. Also, avoid assuming `inbox` contents are permanent; they are often overwritten by subsequent runs. Archive important inbox results manually if you need to keep them.
+</Avoid>
+
+<NextStep>
+Now that you understand how to feed context and control output, you are ready to orchestrate complex workflows. Next, learn how to chain these operations together using **Swarms** to run multiple agents in parallel, or explore **Runtime** options to manage long-running background tasks.
+</NextStep>

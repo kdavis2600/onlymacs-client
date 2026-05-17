@@ -1,0 +1,60 @@
+---
+title: Swarms
+description: Create, join, and verify trusted Mac swarms.
+---
+# Swarms
+
+Swarms are groups of Macs that can help with OnlyMacs work. Use the app to see
+which Macs belong, whether they are online, and what trust boundary applies.
+
+<Learn>
+Membership controls compute eligibility. It does not automatically grant broad
+file access. File approval and route choice still matter for each request.
+</Learn>
+
+---
+
+## Types Of Swarms
+
+| Type | Use it for |
+| :--- | :--- |
+| Local | This Mac only |
+| Private or trusted | Macs you own, manage, or explicitly trust |
+| Public-safe | Non-sensitive work that can leave your trusted devices |
+
+Use `trusted-only` for private work:
+
+```text
+/onlymacs go trusted-only "review my current diff"
+```
+
+Use `remote-first` only for public-safe input:
+
+```text
+/onlymacs go remote-first "draft 10 public launch headlines for a Mac AI assistant"
+```
+
+---
+
+## Joining And Verifying
+
+Use the Swarms screen to create or join a swarm, accept invites, name machines
+clearly, and remove devices that no longer belong.
+
+After joining, check:
+
+1. The expected swarm is active.
+2. Trusted Macs have recognizable names.
+3. Worker Macs are awake and running OnlyMacs.
+4. Sharing is enabled only where you intend it.
+5. Activity shows new `/onlymacs` requests reaching the route you expected.
+
+<Avoid>
+Avoid assuming a private Git repository is enough. The route still needs to be
+local-first or trusted-only for private work.
+</Avoid>
+
+<NextStep>
+Next, use [Current Swarm](/docs/mac-app/current-swarm) for the active-state view
+or [Sharing](/docs/mac-app/sharing) to control whether this Mac helps others.
+</NextStep>

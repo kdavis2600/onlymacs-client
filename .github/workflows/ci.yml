@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  go-and-launcher-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+            go.work
+            apps/local-bridge/go.mod
+
+      - name: Install shell QA dependencies
+        run: sudo apt-get update && sudo apt-get install -y jq ripgrep
+
+      - name: Test local bridge
+        run: go test ./...
+        working-directory: apps/local-bridge
+
+      - name: Validate launcher shell syntax
+        run: find integrations scripts -type f -name '*.sh' -print0 | xargs -0 -n1 bash -n
+
+      - name: Run launcher intent smoke tests
+        run: bash integrations/common/test-onlymacs-cli-intents.sh
+
+      - name: Run remote work contract matrix
+        run: bash scripts/qa/onlymacs-remote-work-contract-matrix.sh
+
+      - name: Run reporting contract matrix
+        run: bash scripts/qa/onlymacs-reporting-contract-matrix.sh
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/onlymacs-web/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci
+        working-directory: apps/onlymacs-web
+
+      - name: Lint web
+        run: npm run lint
+        working-directory: apps/onlymacs-web
+
+      - name: Build web
+        run: npm run build
+        working-directory: apps/onlymacs-web

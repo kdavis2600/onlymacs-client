@@ -1,0 +1,228 @@
+---
+title: CLI Parameters
+description: Every common OnlyMacs CLI flag, value, and copyable example.
+---
+# CLI Parameters
+
+This page shows you how to control OnlyMacs behavior through command-line flags. These parameters define the safety, speed, and scope of your engineering work. A well-chosen flag set turns a vague request into a precise, repeatable workflow. A poor choice can lead to wasted time, unexpected costs, or even accidental data changes. We will walk through each category by explaining the concept, when to apply it, the recommended defaults for daily work, and the specific pitfalls that trip up even experienced users.
+
+<Learn>
+**What to know:** Every flag modifies the execution contract between you and the system.
+*   **Routing flags** decide *where* code is processed (your Mac vs. cloud).
+*   **Context flags** decide *what* files are visible and how changes are saved.
+*   **Execution flags** decide *how deeply* the system thinks and acts.
+*   **Output flags** decide how results are formatted for humans or scripts.
+
+Mastering these allows you to move from "trying things out" to "running reliable engineering pipelines."
+</Learn>
+
+## Output and Confirmation
+
+When you run commands interactively, you want readable text and safety checks. When you script tasks or integrate OnlyMacs into CI/CD pipelines, you need predictable data structures and unattended execution. The output and confirmation flags bridge this gap.
+
+By default, OnlyMacs produces colored, human-friendly output with progress spinners. This is excellent for terminal use but breaks automated parsers. The `--json` flag transforms all output into valid JSON, stripping ANSI colors and spinners in favor of strict key-value pairs. Use this when piping output to tools like `jq` or logging to systems that cannot handle rich text.
+
+```bash
+onlymacs --json status latest | jq '.status'
+```
+
+The `--yes` (or `-y`) flag removes interactive pauses. Normally, OnlyMacs halts before risky operations to ask for approval. With `--yes`, it proceeds immediately. This is essential for automation but dangerous if used prematurely. Always run a command once without `--yes` to inspect the proposed plan. Once verified, re-run with the flag to automate.
+
+```bash
+# Step 1: Inspect the plan safely
+onlymacs --trusted-only "update dependencies safely"
+
+# Step 2: Execute automatically after verification
+onlymacs --yes --trusted-only "update dependencies safely"
+```
+
+<Avoid>
+**Avoid combining `--yes` with broad context modes** (like `full-project`) unless you have strictly locked down routing and write permissions. A typo in your prompt combined with automatic confirmation could trigger unintended changes across your entire repository.
+</Avoid>
+
+If you ever forget a flag's purpose, append `--help` (or `-h`) to any command. It displays concise, context-aware documentation directly in your terminal.
+
+## Execution Mode
+
+Execution mode determines whether OnlyMacs treats your request as a simple query or a complex engineering task. Choosing the wrong mode is a common source of frustration: using "simple" for hard problems yields shallow answers, while using "extended" for trivial questions wastes time and tokens.
+
+Use `--simple` for single-pass tasks like summarizing a file, explaining a function, or generating a quick snippet. In this mode, the system responds immediately without internal planning, retries, or checkpointing. It is fast and low-cost but lacks the depth required for multi-file refactors or logic validation.
+
+```bash
+onlymacs --simple --remote-first "summarize the last 10 commits in one sentence"
+```
+
+Use `--extended` for anything requiring reasoning, planning, or validation. This includes bug fixes spanning multiple files, architectural refactors, or migrations. In this mode, OnlyMacs generates an execution plan, runs steps sequentially, validates outcomes against tests or diffs, and self-corrects errors. It takes longer but ensures correctness.
+
+```bash
+onlymacs --extended --trusted-only --context-read git --context-write staged \
+  "fix the null reference in user auth flow and verify with tests"
+```
+
+For very long-running jobs like full-repo audits or deep technical debt analysis, add the `--overnight` flag. This variant of `--extended` increases retry limits, timeout thresholds, and output buffers to handle hours-long processes without dropping connection.
+
+<BestDefault>
+**Start with `--extended`** unless you are certain the task is trivial. If your request involves reading more than two files or requires test verification, simple mode will likely fail silently or produce partial results that cost more to fix later.
+</BestDefault>
+
+## Width and Lanes
+
+Parallelism allows OnlyMacs to split large tasks into independent subtasks, processing them simultaneously to reduce total runtime. This is controlled by "lanes," which are isolated workers handling separate chunks of work. You specify the number of lanes using `--go-wide=N`, where N ranges from 1 (serial) to 8 (maximum parallelism).
+
+This approach shines when reviewing distinct parts of a codebase or processing unrelated files. For example, you can split a release review into four domains:
+
+```bash
+onlymacs --go-wide=4 --trusted-only --context-read git --context-write staged \
+  "split this release review into frontend, backend, security, and docs lanes"
+```
+
+Each lane operates independently. Still, coordination overhead exists. Spawning too many lanes for a small task adds latency rather than saving time. Alternative syntaxes like `--go-wide-lanes N` or `--wide-lanes N` allow dynamic scripting, such as setting lane counts via environment variables. Using `--go-wide=max` utilizes all available lanes (capped at 8), which is best for large-scale reviews under tight deadlines.
+
+<Decision>
+**Choosing Lane Count:**
+*   **Single file or linear refactor:** Use `--go-wide=1` (default). Parallelism adds no value here.
+*   **Multi-module review or batch processing:** Use `--go-wide=4`. This balances speed with resource usage.
+*   **Massive audit under pressure:** Use `--go-wide=max`.
+*   **Resource-constrained machine:** Stick to lower lane counts to avoid saturating local CPU or network.
+</Decision>
+
+<Avoid>
+**Avoid using high lane counts for sequential tasks.** If step B depends on the output of step A (e.g., refactor -> test -> deploy), parallel lanes cannot help and may cause race conditions. Stick to serial execution for dependent workflows.
+</Avoid>
+
+## Route Flags
+
+Route flags determine where your code is processed: locally on your hardware or remotely on shared infrastructure. This choice directly impacts privacy, compliance, and sometimes performance.
+
+The `--local-first` flag keeps the job on your own Mac when a route is needed. Use this for authentication logic, business-important algorithms, local logs, or any code governed by strict data policies. In the current product, `--local-first` keeps work on "This Mac" and fails, waits, or asks for a different route if local capacity is not available.
+
+The `--remote-first` flag uses cloud-based Macs first. This is often faster for public or open-source work where privacy is less important, such as generating documentation or updating dependencies in OSS projects.
+
+The `--trusted-only` flag restricts execution to your private, authorized Macs. It blocks access to shared or public swarms entirely. This is the safest configuration for private repositories and sensitive intellectual property.
+
+```bash
+onlymacs --trusted-only "analyze the payment module and suggest improvements"
+```
+
+If you manage a fleet of personal or team-owned Macs configured for offloading, use `--offload-max`. This maximizes utilization of your existing capacity before considering other options. Be aware that if your local machines are offline or busy, the command may stall waiting for resources rather than failing over to public clouds.
+
+<BestDefault>
+**Default to `--trusted-only`** for internal development. Switch to `--remote-first` only for low-risk, non-sensitive tasks where speed is the primary constraint.
+</BestDefault>
+
+<Avoid>
+**Avoid assuming `--remote-first` is always faster.** Network transfer times, warm-up delays, and queueing on shared infrastructure can make local-first execution quicker, especially on modern Macs with fast SSDs and ample RAM.
+</Avoid>
+
+## Context Read Modes
+
+Context read modes define which files OnlyMacs can see and how it accesses them. Setting this correctly ensures the system has enough information to solve your problem without exposing unnecessary or sensitive data.
+
+| Mode | Behavior | Best Use Case |
+| :--- | :--- | :--- |
+| `git` | Reads only tracked/staged files in the current branch. | **Default.** Safe for most dev workflows; ignores temp/ignored files. |
+| `full-project` | Reads the entire project directory, including untracked files. | Tasks needing config files, logs, or generated assets not in git. |
+| `manual` | Asks for permission before reading each file. | Auditing third-party code or experimenting with high-risk prompts. |
+| `packs` | Loads pre-saved context packs. | Reusing curated file sets for consistent reviews. |
+
+The `git` mode is the recommended default. It aligns with version control boundaries, preventing the system from accidentally reading temporary build artifacts or ignored secrets.
+
+```bash
+onlymacs --context-read git --context-write staged "refactor login service"
+```
+
+Use `full-project` sparingly. While useful for tasks requiring uncommitted configuration or logs, it increases token usage and response time in large monorepos. More importantly, it risks exposing sensitive files like `.env` or `secrets.json` if they are not properly ignored.
+
+The `manual` mode offers maximum transparency by requiring explicit permission for every file access. Use this when auditing unfamiliar codebases. The `packs` mode enables reuse of curated file sets (e.g., a "frontend-core" pack), improving consistency and reducing bandwidth.
+
+<Avoid>
+**Avoid using `full-project` without verifying your `.gitignore` patterns.** If sensitive files are not ignored, this mode will include them in the context, potentially leaking credentials or proprietary data to the model.
+</Avoid>
+
+## Context Write Modes
+
+Context write modes control how OnlyMacs applies changes, ranging from suggestion-only to immediate filesystem writes. Your choice here defines the risk profile of the operation.
+
+| Mode | Behavior | Recommended Use |
+| :--- | :--- | :--- |
+| `inbox` | Writes report/diff to OnlyMacs inbox only. | Design reviews, risk assessments, no side effects. |
+| `staged` | Creates git-staged changes. | **Standard.** Most code modifications requiring review. |
+| `direct` | Applies changes immediately to disk. | Trivial fixes, formatting, confident small edits. |
+| `read-only` | Prevents all writes. | Dry runs, testing swarm behavior, policy validation. |
+
+The `inbox` mode is the safest option. It generates a report or diff without touching your filesystem, making it ideal for gathering insights or assessing risk before acting.
+
+```bash
+onlymacs --context-write inbox "list potential security issues in OAuth flow"
+```
+
+The `staged` mode is the standard for actual development. Changes appear as staged git commits, allowing you to review the diff, run tests, and commit manually. This provides a important safety net.
+
+```bash
+onlymacs --context-write staged "add input validation to user registration"
+```
+
+The `direct` mode bypasses review and writes changes straight to disk. Reserve this for trivial, reversible changes like correcting typos or updating comments. Avoid using `direct` with complex prompts or in unfamiliar codebases. The `read-only` mode enforces a dry-run mindset, useful for validating prompts without altering state.
+
+<BestDefault>
+**Prefer `staged` over `direct`.** Even small changes benefit from human review. One wrong rewrite in `direct` mode can overwrite important logic, and recovery takes far longer than a five-second diff check.
+</BestDefault>
+
+## Tests and Installs
+
+These flags grant OnlyMacs permission to execute external commands: running test suites or installing missing dependencies. They are disabled by default to prevent unintended side effects.
+
+The `--allow-tests` flag permits the execution of test runners (e.g., `npm test`, `pytest`) if allowed by your swarm policy. The `--allow-installs` flag allows installing missing dependencies via package managers. Note that these flags enable capabilities; they do not override organizational policies. If your coordinator prohibits installs, these flags will not bypass that restriction.
+
+A reliable workflow combines testing with staged writes to ensure repairs are validated before being finalized:
+
+```bash
+onlymacs --trusted-only --allow-tests --context-read git --context-write staged \
+  "fix the failing login test and run the narrowest matching test"
+```
+
+Use `--allow-installs` with extreme caution. Installing dependencies introduces external code into your environment. Enable it only when you trust the source, versions are pinned, and you have rollback procedures in place. Avoid using it in production deployment scripts, as uncontrolled upgrades can break compatibility or introduce vulnerabilities.
+
+<Recipe>
+**Safe Repair Workflow:**
+1.  Identify the failure.
+2.  Run OnlyMacs with `--allow-tests` and `--context-write staged`.
+3.  Review the staged diff.
+4.  Run tests locally to confirm the fix.
+5.  Commit if successful.
+</Recipe>
+
+<Avoid>
+**Avoid assuming `--allow-installs` grants admin privileges.** It only permits installs within sandboxed environments defined by your configuration. Actual system-level changes require separate OS permissions.
+</Avoid>
+
+## Plan Files, Titles, and Watch Interval
+
+For repeatable processes like audits, releases, or onboarding, use plan files instead of ad-hoc prompts. A plan file is a Markdown document defining steps, goals, and conditions. Execute it using `--plan`, `--plan:`, or `--plan-file`.
+
+```bash
+onlymacs --trusted-only --plan:plans/content-pipeline.md --yes \
+  "execute the content pipeline audit"
+```
+
+Storing plan files in version control ensures consistency across team members and over time. Update them as your processes evolve.
+
+Use `--title` to label runs meaningfully. Instead of searching logs by hash, you can filter by descriptive titles like "Q3 Security Audit" or "Database Migration Prep".
+
+```bash
+onlymacs --title "Database Migration Prep" status current
+```
+
+When monitoring long jobs with `onlymacs watch`, you can adjust the polling frequency using `--interval` (in seconds). The default is typically 10 seconds. Lower intervals (e.g., `--interval 2`) provide smoother feedback but increase network load. Higher values (e.g., `--interval 30`) reduce chatter in low-bandwidth environments.
+
+```bash
+onlymacs --interval 5 watch current
+```
+
+<BestDefault>
+**Store plan files in Git** alongside your code. Use clear, descriptive titles for every run to simplify debugging and auditing months later. Avoid vague titles like "Run stuff."
+</BestDefault>
+
+<NextStep>
+Now that you understand how to configure individual commands, learn how to orchestrate multiple agents working together. Proceed to the **Swarms** guide to see how to distribute complex tasks across your fleet of Macs efficiently.
+</NextStep>

@@ -1,0 +1,158 @@
+---
+title: CLI Overview
+description: Use the onlymacs command from terminal, Codex, Claude Code, and other tools.
+---
+# CLI Overview
+
+The `onlymacs` command is your interface to the OnlyMacs coordination system, allowing you to delegate tasks like code reviews, refactors, or audits directly from your terminal. Whether you are typing manually, scripting in a CI pipeline, or driving the tool from an AI assistant like Codex or Claude Code, the CLI translates your intent into secure execution across your available Macs.
+
+The flags you choose define strict boundaries for data privacy, resource allocation, and safety. A missing flag might send proprietary code to a public model; an incorrect context mode could overwrite uncommitted work. This page shows you how to navigate these choices deliberately. We will move from simple natural language interactions to controlled, reliable production workflows, explaining the syntax and the reasoning behind every recommended default.
+
+<Learn>
+**What to know:** The CLI acts as a policy engine. When you run a command, OnlyMacs evaluates your request against your local configuration, available hardware (your "swarm"), and security rules before executing anything. You are defining where the prompt runs and what it is allowed to touch.
+</Learn>
+
+## Starting with Natural Language
+
+When you are exploring a problem or working on non-sensitive tasks, the most efficient entry point is natural language. You describe your goal in plain English, and OnlyMacs infers the necessary steps and routing.
+
+```bash
+onlymacs "review this refactor and tell me what could break"
+```
+
+In this mode, OnlyMacs inspects your current directory, respecting `.gitignore` rules and scanning for obvious secrets. It then selects a route based on its internal heuristics: if the project looks private, it prefers local or trusted nodes; if it appears to be public documentation, it might opt for faster remote resources.
+
+This approach is ideal for quick feedback loops, debugging local scripts, or asking about standard library patterns. It removes the cognitive load of selecting specific models or agents when the stakes are low. Still, because it relies on inference, it is not suitable for high-security contexts.
+
+<BestDefault>
+**Run from a Git Repository:** Always execute natural language commands from within a git-tracked directory. This allows OnlyMacs to accurately assess the project scope, identify modified files, and apply appropriate privacy defaults. Running from loose directories like `~/Desktop` forces the tool to guess, increasing the risk of over-sharing or missing context.
+</BestDefault>
+
+<Avoid>
+**Avoid for sensitive logic:** Avoid relying on automatic detection for tasks involving authentication flows, internal API keys, or unreleased features. Inference is probabilistic, not a security guarantee. If there is any chance the input contains private data, you should explicitly set trust boundaries using route flags.
+</Avoid>
+
+## Controlling Execution Routes
+
+While natural language mode is convenient, serious development requires explicit control over where your code runs. Route flags are enforcement policies, not performance hints. They dictate whether your data stays on your machine, moves to a trusted colleague's Mac, or goes to a third-party cloud provider. Choosing the wrong route can lead to data leakage or job failures due to missing dependencies.
+
+<Decision>
+**Choosing the Right Route**
+
+| Flag | When to Use | Behavior | Risk if Misused |
+| :--- | :--- | :--- | :--- |
+| `--local-first` | You should keep data strictly on **This Mac**. Ideal for reviewing auth logic, config files with secrets, or proprietary algorithms. | Keeps execution on your local machine when a route is needed. | Tasks may fail, wait, or ask for a different route if your local Mac lacks model capacity. |
+| `--trusted-only` | Working with private repos, internal services, or regulated data. **Recommended default for coding.** | Restricts execution to Macs you have explicitly authorized in your swarm. No ephemeral or unknown nodes. | Job will fail immediately if no trusted nodes are online. Always verify with `onlymacs swarms`. |
+| `--remote-first` | Processing public content (marketing copy, open-source docs) where speed or specialized large models matter more than isolation. | Prioritizes fast external runtimes. May send text snippets to third-party models. | **High risk:** Sends data outside your control. Avoid using for private code, stack traces, or internal URLs. |
+
+</Decision>
+
+Consider a scenario where you need to audit a login flow for race conditions. Even though the prompt sounds generic, the underlying code is sensitive.
+
+```bash
+onlymacs --trusted-only "audit login flow for potential race conditions"
+```
+
+By adding `--trusted-only`, you ensure that the source code stays inside your circle of authorized machines. A common mistake is assuming `--remote-first` is always superior because it offers access to faster routes. While it may be faster, the cost is loss of control. Commit history, stack traces, and test output can contain secrets in places people forget to review. Once that data leaves your swarm, you cannot revoke it.
+
+<Recipe>
+**Safe Default Workflow**
+1. Verify your trusted nodes are active: `onlymacs swarms`
+2. Run your task with explicit trust: `onlymacs --trusted-only "your task"`
+3. If you should use remote resources, sanitize inputs first or use `onlymacs plan` to preview the route before committing.
+</Recipe>
+
+## Operational Checks
+
+OnlyMacs gives you visibility into your physical and logical infrastructure, unlike cloud platforms that abstract these details away. Before launching significant jobs, especially those involving multiple machines or expensive models, you should validate your environment. These diagnostic commands do not execute tasks; they answer important questions about connectivity, configuration, and resource availability.
+
+The essential toolkit includes `onlymacs check` for validating the app and launcher setup, `onlymacs status` for connection health, `onlymacs runtime` for the active coordinator mode, `onlymacs swarms` to see registered members and trust state, and `onlymacs models` to verify accessible models.
+
+A reliable workflow incorporates these checks automatically. Imagine you intend to launch a parallel audit across four trusted Macs. Instead of guessing, run a preflight sequence:
+
+```bash
+onlymacs check && onlymacs status && onlymacs swarms
+```
+
+Scrutinize the output. Does `check` report misconfigurations? Is `status` showing stable latency? Importantly, does `swarms` list enough trusted nodes? If `swarms` returns empty or only untrusted entries, a subsequent `--trusted-only` command will fail instantly, regardless of how carefully the prompt is written. Users often waste time debugging complex flags when the root cause is that their home lab has not synced after a reboot.
+
+<Note>
+**Automation Tip:** In scripts, wrap these checks to fail fast.
+```bash
+if ! onlymacs swarms | grep -q "trusted"; then
+  echo "No trusted nodes available. Aborting."
+  exit 1
+fi
+```
+This clarifies that a failure is due to infrastructure state, not a bug in your command logic.
+</Note>
+
+## Workflow Modes: Plan, Start, and Go
+
+Not all tasks require the same level of scrutiny. For trivial queries, jumping straight to execution is efficient. Still, for complex, expensive, or parallelized work, you should separate planning from action. `plan` checks the route and expected behavior, `start` launches the run with explicit confirmation, and `go` is the shortcut for common, well-understood patterns.
+
+### Plan: See Before You Leap
+
+The `plan` command asks OnlyMacs to simulate your request without executing it.
+
+```bash
+onlymacs plan coder 3 "design the migration plan"
+```
+
+The output reveals the estimated steps, the chosen route, resource demands such as requested agents, and potential side effects like file writes. Use `plan` when you are trying a new preset, running high-parallelism jobs, working near production systems, or operating under strict billing limits. It often uncovers surprises before execution, such as a job needing more trusted capacity than you currently have online.
+
+### Start: Execute with Intention
+
+Once the plan looks correct, use `start` to launch the real session.
+
+```bash
+onlymacs --yes start best-available 8 "fan out a test audit"
+```
+
+Without the `--yes` flag, `start` pauses for interactive confirmation, displaying the same details as `plan`. Reserve `--yes` for automated scripts where you have already validated the parameters. Be cautious: `start` incurs real costs in compute time, network usage, and energy. Avoid hardcoding `--yes` in shared scripts without clear documentation, as it bypasses the final human safety check.
+
+### Go: Quick and Predictable
+
+For repetitive, low-risk patterns, the `go` command provides a streamlined interface.
+
+```bash
+onlymacs go wide 4 "split this bug hunt into parallel tracks"
+```
+
+Here, `wide` is a built-in preset optimized for broad exploration with moderate parallelism. Other useful presets include `balanced` for everyday work, `quick` or `fast` for low-latency tasks, `trusted-only` for private code, `offload-max` for saving paid tokens, and `precise` when quality matters more than speed. Use `go` when you trust the preset's defaults and need brevity in day-to-day work. Avoid it when cost predictability matters, compliance requires an audit trail of decisions, or you are troubleshooting inconsistent results. Because `go` hides the intermediate planning step, it trades some transparency for speed.
+
+<BestDefault>
+**Development vs. Production:** Use `plan` followed by `start` during development, code review, and any novel workflow. Switch to `go` only once the pattern is proven, stable, and the risks are fully understood.
+</BestDefault>
+
+## Safe Coding Workflows
+
+When modifying code, safety is important. The goal is to allow OnlyMacs to propose changes while keeping final approval strictly in your hands. The safest default combines three protections: running only on trusted hardware, reading from a clean version-controlled state, and writing changes to a staging area rather than directly to disk.
+
+```bash
+onlymacs --trusted-only --context-read git --context-write staged --allow-tests \
+  "fix the smallest failing test and leave the patch staged"
+```
+
+Each flag serves a specific defensive purpose. `--trusted-only` prevents source code from leaving your secured Macs. `--context-read git` ensures OnlyMacs bases its understanding on the latest committed state, ignoring untracked or dirty files that might confuse the model. `--context-write staged` outputs changes as staged diffs via `git add`, meaning nothing is committed or overwritten until you explicitly decide to do so. Finally, `--allow-tests` permits the agent to run unit or integration tests to validate its fixes, which is important for confidence.
+
+After the command finishes, inspect the result safely:
+
+```bash
+git diff --staged
+```
+
+If the changes look correct, commit them normally. If not, you can unstage and discard them without affecting your working tree.
+
+<Avoid>
+**Important Mistakes to Avoid**
+*   **Omitting `--context-write staged`:** Without this, some modes may write directly to files, risking the loss of unsaved work or creating messy diffs.
+*   **Skipping `--trusted-only`:** Even harmless-looking refactor suggestions can leak architectural insights if processed on untrusted nodes.
+*   **Combining `--allow-tests` with `--remote-first`:** Test suites often print environment variables, database URLs, or internal service names to stdout. Sending this output to a remote processor exposes sensitive infrastructure details.
+</Avoid>
+
+Consider a real-world failure case: a developer ran `onlymacs "update dependencies" --allow-tests` without trust or staging controls. The tool applied updates directly to `package.json` and ran tests locally, which spewed logs containing dev API keys. Worse, there was no clean way to revert the partial changes. Had they used the safe pattern above, they would have received a reviewable patch instead of a compromised environment. Treat every code-modifying task like a pull request draft: stage first, judge later.
+
+<NextStep>
+Now that you understand how to control execution and protect your code, learn how to manage long-running sessions and inspect results in [Extended Runs](./extended-runs) and [Inbox And Reporting](./inbox-reporting).
+</NextStep>

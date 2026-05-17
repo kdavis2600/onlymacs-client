@@ -1,0 +1,113 @@
+---
+title: Deploy Docs
+description: Build and deploy the Nextra docs site at /docs.
+---
+# Deploy Docs
+
+OnlyMacs docs are part of the main website build. They live in `apps/onlymacs-web/src/content`, render through the Nextra route at `/docs`, and are exported into the coordinator checkout's embedded static directory before the coordinator is deployed. Shipping a docs change means rebuilding the web app, syncing the static export, testing the coordinator package, and deploying the coordinator.
+
+<Learn>
+The important thing to remember is that `onlymacs.ai/docs` is the production surface. For routine docs updates, you do not need to keep a local docs server running. Use local commands to compile and validate the static output, then verify the deployed pages with `curl` against the live website.
+</Learn>
+
+## Build the docs inside the web app
+
+Start from the web package and run the production build. This catches MDX syntax errors, missing components, broken imports, invalid frontmatter, and export-time routing problems.
+
+```bash
+cd apps/onlymacs-web
+npm run build
+```
+
+<BestDefault>
+Run the production build for every docs change, even if the edit looks small. Nextra pages are compiled, so a typo in a custom MDX block can break the whole docs export.
+</BestDefault>
+
+If the build fails, fix the MDX page named in the error before moving on. Avoid deploying a partial export, and avoid trying to patch generated files by hand.
+
+## Sync the static export into the coordinator
+
+After the web build passes, sync the exported site into the coordinator checkout's embedded static directory. This script rebuilds the web app, clears the old embedded static files, and copies the fresh `out/` export into `$ONLYMACS_COORDINATOR_REPO/internal/webstatic/static`. If the environment variable is not set, the repo default is `../OnlyMacs-coordinator`.
+
+```bash
+scripts/sync-onlymacs-web-static.sh
+```
+
+<Note>
+This sync is why the coordinator can serve the website and docs directly. The generated files under the coordinator checkout's `internal/webstatic/static` directory are build artifacts, but they matter for the deployed coordinator package.
+</Note>
+
+<Avoid>
+Avoid editing files inside the coordinator checkout's `internal/webstatic/static` directory directly. Those files are generated from `apps/onlymacs-web`. Direct edits will be overwritten the next time the sync script runs.
+</Avoid>
+
+## Test the coordinator package
+
+The coordinator serves both the docs and app update routes, so a docs deploy should still run the coordinator tests. This protects routes like `/docs`, `/docs/app/...`, and the Sparkle/update endpoints from accidental regressions.
+
+```bash
+make coordinator-test
+```
+
+If these tests fail, treat the failure as a release blocker. Docs should not ship by breaking app delivery or update metadata.
+
+## Deploy to Railway
+
+Once the web build, static sync, and coordinator tests pass, deploy the coordinator. The repo already has a deployment script for the Railway service.
+
+```bash
+scripts/deploy-railway-coordinator.sh
+```
+
+The script deploys the coordinator checkout, waits for the deployment to reach `SUCCESS`, and checks the coordinator health endpoint before returning. Let it finish rather than interrupting it midway.
+
+## Verify production
+
+After deployment, verify the live pages. These checks are cheap and catch the failures users actually experience.
+
+```bash
+curl -I https://onlymacs.ai/docs
+curl -I https://onlymacs.ai/docs/quickstart
+curl -I https://onlymacs.ai/docs/app/menu-bar
+```
+
+You want `200` responses for the docs root, a regular nested page, and the `/docs/app/...` alias. The alias matters because the content folder is named `mac-app`, while people naturally expect app docs to live under `/docs/app`.
+
+<Recipe>
+Use this release checklist for docs updates:
+
+```bash
+cd apps/onlymacs-web
+npm run lint
+npm run build
+
+cd ../..
+scripts/sync-onlymacs-web-static.sh
+
+make coordinator-test
+
+scripts/deploy-railway-coordinator.sh
+
+curl -I https://onlymacs.ai/docs
+curl -I https://onlymacs.ai/docs/quickstart
+curl -I https://onlymacs.ai/docs/app/menu-bar
+```
+</Recipe>
+
+<BestDefault>
+Always verify the app update routes after a docs deploy because the coordinator serves both surfaces. A good docs release still needs the appcast, latest JSON, and current DMG route to respond successfully.
+</BestDefault>
+
+```bash
+curl -I https://onlymacs.ai/onlymacs/updates/appcast-public.xml
+curl -I https://onlymacs.ai/onlymacs/updates/latest-public.json
+curl -I https://onlymacs.ai/onlymacs/updates/files/OnlyMacs-public-0.3.10-20260501034016.dmg
+```
+
+<Avoid>
+Avoid relying on a local server as proof that the docs are shipped. Local checks are useful during development, but the acceptance test is the live website at `onlymacs.ai/docs`.
+</Avoid>
+
+<NextStep>
+When a docs page fails after deploy, go to [Troubleshooting](./troubleshooting) and start with the route that failed: docs root, nested docs page, app alias, or update endpoint.
+</NextStep>

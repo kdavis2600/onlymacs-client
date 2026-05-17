@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+  <title>OnlyMacs</title>
+  <welcome file="welcome.html" mime-type="text/html" />
+  <conclusion file="conclusion.html" mime-type="text/html" />
+  <options customize="always" require-scripts="false" hostArchitectures="x86_64,arm64" />
+  <domains enable_anywhere="false" enable_currentUserHome="false" enable_localSystem="true" />
+  <choices-outline>
+    <line choice="seed-reset" />
+    <line choice="onlymacs-app" />
+    <line choice="install-core-tools" />
+    <line choice="join-public" />
+    <line choice="share-this-mac" />
+    <line choice="run-on-startup" />
+    <line choice="skills-group">
+      <line choice="install-codex" />
+      <line choice="install-claude" />
+    </line>
+    <line choice="install-starter-models" />
+    <line choice="finalize" />
+  </choices-outline>
+  <choice id="seed-reset" visible="false" start_selected="true" start_enabled="true" start_visible="false">
+    <pkg-ref id="{{BUNDLE_ID}}.seed.reset" />
+  </choice>
+  <choice id="onlymacs-app" title="OnlyMacs Menu Bar App" description="Installs the OnlyMacs app itself into Applications. Skill Installs below add optional tool-specific surfaces." start_selected="true" start_enabled="false" start_visible="true">
+    <pkg-ref id="{{BUNDLE_ID}}.pkg" />
+  </choice>
+  <choice id="install-core-tools" visible="false" start_selected="true" start_enabled="true" start_visible="false">
+    <pkg-ref id="{{BUNDLE_ID}}.seed.core-tools" />
+  </choice>
+  <choice id="join-public" visible="false" start_selected="true" start_enabled="true" start_visible="false">
+    <pkg-ref id="{{BUNDLE_ID}}.seed.public" />
+  </choice>
+  <choice id="share-this-mac" visible="false" start_selected="true" start_enabled="true" start_visible="false">
+    <pkg-ref id="{{BUNDLE_ID}}.seed.share" />
+  </choice>
+  <choice id="run-on-startup" visible="false" start_selected="true" start_enabled="true" start_visible="false">
+    <pkg-ref id="{{BUNDLE_ID}}.seed.startup" />
+  </choice>
+  <choice id="skills-group" title="Skill Installs" description="Copies selected OnlyMacs skill files into your home folder during setup for Claude Code, Codex, and other supported IDEs." />
+  <choice id="install-codex" title="Codex" description="Copies the OnlyMacs skill to ~/.agents/skills/onlymacs/SKILL.md during setup so Codex and other compatible IDEs or agent runtimes can use it later." start_selected="true" start_enabled="true" start_visible="true">
+    <pkg-ref id="{{BUNDLE_ID}}.seed.codex" />
+  </choice>
+  <choice id="install-claude" title="Claude Code" description="Copies the OnlyMacs skill to ~/.claude/skills/onlymacs/SKILL.md during setup for Claude Code." start_selected="true" start_enabled="true" start_visible="true">
+    <pkg-ref id="{{BUNDLE_ID}}.seed.claude" />
+  </choice>
+  <choice id="install-starter-models" visible="false" start_selected="true" start_enabled="true" start_visible="false">
+    <pkg-ref id="{{BUNDLE_ID}}.seed.models" />
+  </choice>
+  <choice id="finalize" visible="false" start_selected="true" start_enabled="true" start_visible="false">
+    <pkg-ref id="{{BUNDLE_ID}}.finalize" />
+  </choice>
+  <pkg-ref id="{{BUNDLE_ID}}.seed.reset" version="{{VERSION}}" onConclusion="none">OnlyMacs-seed-reset.pkg</pkg-ref>
+  <pkg-ref id="{{BUNDLE_ID}}.pkg" version="{{VERSION}}" onConclusion="none">OnlyMacs-component.pkg</pkg-ref>
+  <pkg-ref id="{{BUNDLE_ID}}.seed.core-tools" version="{{VERSION}}" onConclusion="none">OnlyMacs-seed-core-tools.pkg</pkg-ref>
+  <pkg-ref id="{{BUNDLE_ID}}.seed.public" version="{{VERSION}}" onConclusion="none">OnlyMacs-seed-public.pkg</pkg-ref>
+  <pkg-ref id="{{BUNDLE_ID}}.seed.share" version="{{VERSION}}" onConclusion="none">OnlyMacs-seed-share.pkg</pkg-ref>
+  <pkg-ref id="{{BUNDLE_ID}}.seed.startup" version="{{VERSION}}" onConclusion="none">OnlyMacs-seed-startup.pkg</pkg-ref>
+  <pkg-ref id="{{BUNDLE_ID}}.seed.models" version="{{VERSION}}" onConclusion="none">OnlyMacs-seed-models.pkg</pkg-ref>
+  <pkg-ref id="{{BUNDLE_ID}}.seed.codex" version="{{VERSION}}" onConclusion="none">OnlyMacs-seed-codex.pkg</pkg-ref>
+  <pkg-ref id="{{BUNDLE_ID}}.seed.claude" version="{{VERSION}}" onConclusion="none">OnlyMacs-seed-claude.pkg</pkg-ref>
+  <pkg-ref id="{{BUNDLE_ID}}.finalize" version="{{VERSION}}" onConclusion="none">OnlyMacs-finalize.pkg</pkg-ref>
+</installer-gui-script>

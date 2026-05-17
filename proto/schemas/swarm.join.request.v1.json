@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "swarm.join.request.v1",
+  "type": "object",
+  "required": ["invite_token", "member_id"],
+  "properties": {
+    "invite_token": { "type": "string" },
+    "member_id": { "type": "string" },
+    "member_name": { "type": "string" },
+    "mode": { "type": "string" }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "bridge.runtime.v1",
+  "type": "object",
+  "required": ["mode", "active_swarm_id"],
+  "properties": {
+    "mode": {
+      "type": "string",
+      "enum": ["use", "share", "both"]
+    },
+    "active_swarm_id": { "type": "string" }
+  }
+}

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>OnlyMacsApp</string>
+	<key>CFBundleIconFile</key>
+	<string>OnlyMacs.icns</string>
+	<key>CFBundleIdentifier</key>
+	<string>{{BUNDLE_ID}}</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>OnlyMacs</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>{{BUILD_VERSION}}</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>{{URL_NAME}}</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>onlymacs</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>{{BUILD_NUMBER}}</string>
+	<key>OnlyMacsBuildChannel</key>
+	<string>{{BUILD_CHANNEL}}</string>
+	<key>OnlyMacsBuildTimestamp</key>
+	<string>{{BUILD_TIMESTAMP}}</string>
+{{DEFAULT_COORDINATOR_INFO_KEY}}
+{{SPARKLE_INFO_KEYS}}
+	<key>LSUIElement</key>
+	<true/>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+</dict>
+</plist>

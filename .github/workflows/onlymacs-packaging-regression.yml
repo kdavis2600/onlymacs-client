@@ -1,0 +1,66 @@
+name: OnlyMacs Packaging Regression
+
+on:
+  pull_request:
+    paths:
+      - 'apps/onlymacs-macos/**'
+      - 'scripts/**'
+      - 'integrations/**'
+      - 'Makefile'
+      - '.github/workflows/onlymacs-packaging-regression.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/onlymacs-macos/**'
+      - 'scripts/**'
+      - 'integrations/**'
+      - 'Makefile'
+      - '.github/workflows/onlymacs-packaging-regression.yml'
+  workflow_dispatch:
+
+jobs:
+  packaging-regression:
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: |
+            go.work
+            apps/local-bridge/go.mod
+
+      - name: Bootstrap Swift package resolution
+        run: make bootstrap
+
+      - name: Run Swift package tests
+        run: swift test --package-path apps/onlymacs-macos
+
+      - name: Build unsigned OnlyMacs app bundle
+        run: make macos-app-public
+
+      - name: Assert packaged app contains SwiftPM resource bundles
+        run: |
+          APP_PATH="$(find "$PWD/.tmp" -maxdepth 2 -type d -name 'OnlyMacs.app' | head -n 1)"
+          if [[ -z "$APP_PATH" ]]; then
+            APP_PATH="$PWD/dist/OnlyMacs.app"
+          fi
+          test -d "$APP_PATH"
+          find "$APP_PATH/Contents/Resources" -maxdepth 1 -type d -name '*.bundle' | grep .
+
+      - name: Build unsigned OnlyMacs installer pkg
+        run: make macos-pkg-public
+
+      - name: Verify unsigned installer payload
+        run: ./scripts/verify-macos-pkg-public.sh

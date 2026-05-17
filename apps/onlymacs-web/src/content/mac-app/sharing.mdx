@@ -1,0 +1,66 @@
+---
+title: Sharing
+description: Control what this Mac contributes to your swarm.
+---
+# Sharing
+
+Sharing controls whether this Mac accepts incoming work from a trusted swarm.
+Turning sharing off does not stop you from sending your own requests; it only
+stops this Mac from contributing compute to other requests.
+
+<Learn>
+Use Sharing like a power and attention control. Desktops can usually help more.
+Laptops should share only when plugged in, cool, and not needed for heavy local
+work.
+</Learn>
+
+---
+
+## When To Share
+
+| Situation | Recommended setting |
+| :--- | :--- |
+| Desktop, plugged in, idle | Sharing on |
+| Laptop on battery | Sharing off |
+| Active compile, render, or meeting | Sharing off |
+| Overnight batch window | Sharing on if models and Runtime are ready |
+| Public/shared machine | Sharing off unless you fully control the device |
+
+The app can show whether Runtime is ready, models are available, and the current
+swarm is the one you meant to help.
+
+---
+
+## Before Enabling Sharing
+
+Check these in the app:
+
+1. **Runtime** is ready.
+2. **Models** shows a usable model or route.
+3. **Current Swarm** is the trusted swarm you intend to help.
+4. Power and thermal state are appropriate for background work.
+
+If another Mac cannot see this one, check Current Swarm and Runtime on both
+machines before changing route settings.
+
+---
+
+## Troubleshooting
+
+| Symptom | First fix |
+| :--- | :--- |
+| Other Macs cannot see this Mac | Check Sharing is on, Runtime is ready, and both Macs are in the same trusted swarm |
+| Fans get loud | Turn Sharing off or lower resource limits |
+| Battery drains quickly | Turn Sharing off on battery |
+| Requests fail on this Mac | Check Models and Runtime before accepting more work |
+
+<Avoid>
+Avoid enabling sharing just because a Mac is online. A worker that advertises
+itself while models or runtime are not ready creates failed requests for the
+swarm. Use the app's readiness state first.
+</Avoid>
+
+<NextStep>
+Next, use [Current Swarm](/docs/mac-app/current-swarm) to verify membership or
+[Models](/docs/mac-app/models) to prepare local models.
+</NextStep>

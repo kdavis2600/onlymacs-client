@@ -1,0 +1,82 @@
+---
+title: Tools
+description: Connect Claude Code, Codex, and optional terminal launchers to OnlyMacs.
+---
+# Tools
+
+The Tools section connects OnlyMacs to the places you actually ask for work:
+Claude Code, Codex, and optional terminal workflows. For most users, the goal is
+not to memorize shell commands. The goal is to make `/onlymacs` available inside
+the assistant you already use.
+
+<Learn>
+Tools manages launchers. A launcher lets another app hand a request to the
+OnlyMacs runtime that the menu bar app keeps alive.
+</Learn>
+
+---
+
+## Normal Setup
+
+Use this sequence after installing or updating OnlyMacs:
+
+1. Open the OnlyMacs app.
+2. Go to **Tools**.
+3. Install or refresh the Claude Code and Codex launchers.
+4. Reopen Claude Code or Codex.
+5. Type `/onlymacs check` inside the assistant if you want a quick diagnosis.
+
+If `/onlymacs` is not recognized inside the assistant, refresh launchers in the
+app and reopen the assistant. An already-open assistant may not see a newly
+installed launcher until it starts again.
+
+<BestDefault>
+Prefer assistant launchers for everyday use. Use terminal launchers only when
+you are scripting, debugging, or support asks for command-line output.
+</BestDefault>
+
+---
+
+## Safe Assistant Requests
+
+Start with a request that does not need private files:
+
+```text
+/onlymacs "brainstorm three launch taglines for a Mac AI assistant"
+```
+
+For private work, choose a route:
+
+```text
+/onlymacs go local-first "draft a local-only checklist for reviewing secrets"
+```
+
+```text
+/onlymacs go trusted-only "review my current diff"
+```
+
+OnlyMacs may ask for file approval when a request needs project context. Review
+that approval like you would review an upload prompt: if the material is private,
+keep the route local-first or trusted-only.
+
+---
+
+## Optional Terminal Launcher
+
+Developers can also install the terminal launcher. That is useful for scripts,
+automation, and advanced diagnostics, but it is not required for basic assistant
+use.
+
+If support asks you to run terminal diagnostics, open a fresh terminal after
+refreshing launchers. Otherwise, stay in the app and assistant workflow.
+
+<Avoid>
+Avoid teaching non-technical users to fix setup by editing shell profiles or
+copying commands from logs. Use the Tools screen, reopen the assistant, and check
+Activity or Runtime in the app.
+</Avoid>
+
+<NextStep>
+Next, use [Claude Code And Codex](/docs/assistants) for assistant-first examples
+or [Menu Bar](/docs/mac-app/menu-bar) for the daily app checklist.
+</NextStep>

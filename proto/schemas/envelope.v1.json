@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://onlymacs.local/proto/schemas/envelope.v1.json",
+  "title": "OnlyMacs Envelope v1",
+  "type": "object",
+  "required": ["v", "type", "id"],
+  "additionalProperties": true,
+  "properties": {
+    "v": {
+      "type": "string",
+      "const": "v1"
+    },
+    "type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "timestamp": {
+      "type": "string"
+    }
+  }
+}
+

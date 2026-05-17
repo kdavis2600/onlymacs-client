@@ -1,0 +1,201 @@
+---
+title: Local Bridge API
+description: Local HTTP endpoints used by the CLI and app-managed integrations.
+---
+# Local Bridge API
+
+The Local Bridge API is the HTTP control plane running on your machine, typically at `127.0.0.1:4318`. While the `onlymacs` CLI handles most daily interactions, this API exposes the raw levers for health checks, resource discovery, policy enforcement, and session planning. You do not need to call these endpoints directly for standard workflows, but understanding them is essential when debugging connectivity issues, verifying system state before a important run, or integrating external tools that require direct HTTP access.
+
+The bridge sits beneath the app and CLI. Most users rarely touch it directly, but a few endpoint checks can quickly tell you whether the local runtime is healthy. This page walks through each endpoint's purpose, practical behavior, safe defaults, and common pitfalls.
+
+<Learn>
+**What to know:** The bridge is a local-only HTTP server. It does not expose your data to the internet, but it manages the lifecycle of agents, models, and security policies on your device. All requests must originate from `localhost`.
+</Learn>
+
+## Health and Runtime Inspection
+
+Before troubleshooting a stuck command or scripting an automation, you should verify that the bridge process itself is responsive. Two endpoints serve this purpose: `/health` for a quick pulse check and `/admin/v1/runtime` for deep diagnostics.
+
+Start with `/health` when the CLI seems unresponsive or a script times out. This endpoint returns a minimal JSON payload (`{"status": "ok"}`) if the server is accepting connections. It has no side effects and should respond in under 50 milliseconds. If this fails, the bridge is either stopped or blocked by a firewall rule, and no other API calls will work. In this state, avoid attempting to debug specific commands; instead, restart the service using the app's repair controls or run `onlymacs repair` to restore the daemon.
+
+Use `/admin/v1/runtime` only when you suspect configuration drift, memory pressure, or background task failures. This endpoint aggregates live data about memory usage, loaded models, active swarms, and internal settings. Because it gathers state from multiple subsystems, it is heavier than the health check and may take several hundred milliseconds under load.
+
+<BestDefault>
+Check health at the start of any automation script or after waking your machine from sleep:
+
+```bash
+curl -f http://127.0.0.1:4318/health && echo "Bridge is up" || echo "Bridge unreachable"
+```
+
+For troubleshooting, filter the runtime output to the specific fields you need to avoid parsing noise:
+
+```bash
+curl http://127.0.0.1:4318/admin/v1/runtime | jq '.memory_usage, .config.model_dir'
+```
+</BestDefault>
+
+<Avoid>
+- **Avoid polling `/admin/v1/runtime` in tight loops.** Calling it more than once every few seconds adds unnecessary overhead and can slow down active agent sessions. If you should monitor state over time, insert a `sleep 2` between requests.
+- **Avoid assuming the bridge starts automatically.** Always verify connectivity with `/health` before attempting complex operations.
+- **Avoid parsing the full JSON blindly.** Extract only the keys relevant to your issue to keep your scripts reliable against schema changes.
+</Avoid>
+
+## Discovering Available Resources
+
+When launching new sessions or debugging why a prompt failed, you need to know what resources are loaded and available right now. The `/admin/v1/swarms` and `/admin/v1/models` endpoints provide this real-time inventory.
+
+A **swarm** is a group of coordinated agents working together on a task, while a **model** refers to a neural network instance actively loaded into memory. These endpoints reveal the current operational state. Models may be unloaded automatically to free memory, so a model you used yesterday might not be listed today. Similarly, swarms time out after periods of inactivity unless explicitly pinned. Relying on cached knowledge of your environment often leads to "resource not found" errors; always query the bridge first.
+
+<Recipe>
+**List usable model IDs:**
+```bash
+curl http://127.0.0.1:4318/admin/v1/models | jq -r '.[].id'
+```
+
+**View active swarms and titles:**
+```bash
+curl http://127.0.0.1:4318/admin/v1/swarms | jq -r '.[] | "\(.id) \(.title)"'
+```
+
+**Prevent duplicate swarms in automation:**
+```bash
+if ! curl -s http://127.0.0.1:4318/admin/v1/swarms | jq -er 'any(.title == "Release audit")'; then
+  echo "Starting new swarm..."
+  # Insert launch logic here
+fi
+```
+</Recipe>
+
+<Decision>
+| Scenario | Action |
+| :--- | :--- |
+| Script needs a specific model | Query `/admin/v1/models` first. If missing, trigger a load via the app or CLI before proceeding. |
+| Debugging a failed prompt | Check `/admin/v1/swarms` to see if the target session timed out or was evicted. |
+| Building dynamic workflows | Use these endpoints to select the least-loaded model or reuse an existing swarm ID. |
+</Decision>
+
+<Avoid>
+- **Avoid hardcoding model IDs** without checking availability first. Prefer dynamic selection based on the API response.
+- **Avoid assuming persistence.** Treat models and swarms as ephemeral unless your workflow explicitly pins them.
+- **Avoid parsing raw JSON without filtering.** Use tools like `jq` to extract specific fields, making your integration resilient to future API updates.
+</Avoid>
+
+If a required model is not listed, open the Models screen in the OnlyMacs app to make the route available, then run `onlymacs models` to refresh your local view. Trust the current availability check over your memory of previous installations.
+
+## Request Classification and Policy Enforcement
+
+Security in OnlyMacs is enforced through policy classification before execution. The `/admin/v1/request-policy/classify` endpoint analyzes a prompt to determine how it should be handled based on your configured security rules. It evaluates content sensitivity, intent, and context to recommend a routing strategy.
+
+Use this endpoint in automated workflows where data privacy matters, such as handling authentication flows, personally identifiable information (PII), or internal codebases. Skipping this step risks sending sensitive prompts to non-isolated environments. The bridge provides guidance here: it returns a decision (`allow`, `block`, or `escalate`) and a recommended route (e.g., `trusted_only`), but it does not execute the block itself. Your application logic must respect the recommendation.
+
+<Example>
+**Classifying a sensitive prompt:**
+
+```bash
+curl -X POST http://127.0.0.1:4318/admin/v1/request-policy/classify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "review this private auth flow implementation",
+    "route_scope": "swarm"
+  }'
+```
+
+**Handling the response in a shell script:**
+
+```bash
+RESPONSE=$(curl -s -X POST http://127.0.0.1:4318/admin/v1/request-policy/classify \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "deploy secrets to prod", "route_scope": "swarm"}')
+
+ROUTE=$(echo $RESPONSE | jq -r '.required_route')
+
+if [[ "$ROUTE" == "trusted_only" ]]; then
+  echo "Re-routing to trusted environment..."
+  # Adjust swarm plan to use trusted-only agents
+else
+  echo "Standard routing permitted."
+fi
+```
+</Example>
+
+<Avoid>
+- **Avoid skipping classification** even for prompts that seem safe. Automated detection catches edge cases humans often miss.
+- **Avoid ignoring the `reason` field.** It provides the audit trail needed to understand why a policy triggered.
+- **Avoid treating classification as enforcement.** The bridge advises; your code must act on the `decision` and `required_route` fields.
+</Avoid>
+
+Avoid sending classified data directly to completion endpoints without prior policy checks. If the classifier returns `escalate` or `block`, halt the workflow and alert the user or switch to a secure route.
+
+## Planning Swarm Sessions
+
+Executing a multi-agent session consumes significant resources. The `/admin/v1/swarm/plan` endpoint allows you to simulate a session before allocating any agents. It validates parameters like model support, agent count limits, and strategy compatibility, acting as a dry run to prevent failed executions.
+
+Run planning before any high-cost or production-important operation, especially when using parallel strategies like `go_wide`, launching large numbers of agents, or working within restricted contexts. You provide the intended configuration, and the bridge returns a validation status, estimated cost, and duration hint. Even if a plan is valid, actual performance may vary based on system load, but this step guarantees that your configuration is logically sound.
+
+<BestDefault>
+For auditing releases with isolation requirements, explicitly define all parameters:
+
+```bash
+curl -X POST http://127.0.0.1:4318/admin/v1/swarm/plan \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Release audit",
+    "model": "llama3-70b-instruct",
+    "route_scope": "trusted_only",
+    "strategy": "go_wide",
+    "requested_agents": 4,
+    "max_agents": 4,
+    "prompt": "audit launch readiness across security, docs, and rollback plans"
+  }'
+```
+
+Always specify the `model` explicitly in production scripts. Auto-selection can change between runs, breaking reproducibility. Set both `requested_agents` and `max_agents` to the same value unless you intentionally want the system to scale down the team size.
+</BestDefault>
+
+<Avoid>
+- **Avoid setting `requested_agents` greater than `max_agents`.** This violates logical constraints and will fail validation immediately.
+- **Avoid relying on empty `model` fields** for reproducible workflows. Explicit is always better than implicit.
+- **Avoid proceeding to execution if `valid` is false.** Fix the reported errors in the `errors` list before retrying.
+</Avoid>
+
+Common mistakes include forgetting the `route_scope` when dealing with sensitive data, requesting more agents than your hardware supports, or using strategies unsupported by the selected model. Wait until the plan succeeds before calling any execute endpoints.
+
+## OpenAI Compatibility Layer
+
+To simplify integration with existing tools, the bridge includes an OpenAI-compatible endpoint at `/v1/models`. This mimics the standard OpenAI API format, allowing third-party applications like VS Code extensions, LangChain, or LlamaIndex to discover available models without custom integration logic.
+
+This endpoint translates OnlyMacs' internal registry into a standard JSON shape containing model IDs and object types. It is read-only and supports only model listing; it does not implement chat completions or other OpenAI routes. Importantly, it lists only models that are currently **loaded and ready**. Installed but unloaded models will not appear here.
+
+<Recipe>
+**Test connectivity:**
+```bash
+curl http://127.0.0.1:4318/v1/models
+```
+
+**Configure LangChain for local use:**
+```python
+from langchain_openai import ChatOpenAI
+
+llm = ChatOpenAI(
+    base_url="http://127.0.0.1:4318/v1",
+    model="llama3-70b-instruct",
+    api_key="not-needed" # Localhost does not require auth
+)
+```
+</Recipe>
+
+<Note>
+This endpoint is for convenience and discovery only. For full control over swarms, policies, and execution, use the `/admin/v1/*` endpoints described above.
+</Note>
+
+<Avoid>
+- **Avoid assuming all installed models appear here.** Only loaded models are listed.
+- **Avoid expecting full OpenAI API parity.** Attempts to call `/v1/chat/completions` on this port will fail; use the native OnlyMacs execution flows for that.
+- **Avoid exposing port 4318 to public networks.** While designed for localhost, misconfigured firewalls could leak system information.
+</Avoid>
+
+If a tool fails to detect models, verify the bridge is running via `/health`, confirm the model is loaded via `/admin/v1/models`, and ensure your client is pointing to the correct port.
+
+<NextStep>
+Now that you understand how to inspect and plan via the API, explore the **CLI Reference** to learn how `onlymacs go`, `onlymacs plan`, and `onlymacs watch` map to these underlying operations for daily workflows.
+</NextStep>

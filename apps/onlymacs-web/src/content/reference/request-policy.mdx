@@ -1,0 +1,119 @@
+---
+title: Request Policy
+description: How OnlyMacs classifies prompts before routing them.
+---
+# Request Policy
+
+Request Policy is the automatic decision engine that evaluates your prompt before any work begins. Instead of forcing you to manually select a security mode for every command, OnlyMacs inspects your input for intent, sensitivity, and context requirements. It analyzes keywords, file references, and structural cues to determine the safest execution path. If you ask to debug a failing test in your local repository, the policy recognizes the need for local file access. If you ask to rewrite public documentation, it identifies the task as safe for remote processing. Understanding these decisions helps you write prompts that route correctly the first time, preventing execution failures and accidental data exposure.
+
+<Learn>
+Request Policy classifies your prompt into a specific decision category before routing. This classification determines whether your task runs locally, remotely, or requires sanitization. You do not set this policy manually; it is derived from your prompt content. Your goal is to write clear prompts that align with your intended security boundary so the classifier makes the right choice automatically.
+</Learn>
+
+## How the Classifier Decides
+
+When you submit a prompt, OnlyMacs scans for patterns that indicate risk or resource needs. It looks for explicit mentions of sensitive files like `.env` or `secrets.yml`, phrases implying local state such as "failing test in my repo," or broad requests like "rewrite documentation" that lack private context. Based on these signals, the system assigns a policy decision. This decision is not arbitrary; it reflects real constraints about where your data can safely travel.
+
+The following table outlines the possible decisions and their practical implications for your workflow:
+
+| Decision | Meaning | What Happens Next |
+| :--- | :--- | :--- |
+| `allow_current_route` | The requested path (local or remote) is safe for this content. | The task proceeds immediately without modification. |
+| `public_export_required` | The prompt contains elements that must be sanitized before public processing. | Sensitive context is stripped automatically before sending to a remote agent. |
+| `private_export_required` | Sensitive information is detected; secure packaging is required. | Work proceeds only in a protected environment; untrusted remotes are blocked. |
+| `local_only_recommended` | The task likely involves local files, internal logic, or unsafe-to-share data. | You should rerun with `--local-first`. Remote execution is discouraged to prevent errors. |
+| `blocked_public` | High sensitivity detected (e.g., keys, PII). Cannot go to any public system. | Execution stops unless you explicitly force local execution with approval. |
+| `blocked_unverified` | The current session lacks required authentication or scope. | You should verify identity or adjust permissions before continuing. |
+
+<BestDefault>
+Treat any prompt mentioning project files, configuration, or internal logic as sensitive until proven otherwise. When in doubt, assume the classifier will recommend `local_only_recommended` and plan your command flags accordingly.
+</BestDefault>
+
+<Avoid>
+Avoid assuming that a prompt is safe for remote execution just because it seems harmless. Mentioning a file path like `.env.example` can trigger a `blocked_public` decision even if the file contains no real secrets, because the pattern itself reveals project structure.
+</Avoid>
+
+## Testing Classification Before Execution
+
+For sensitive tasks or automated scripts, you should verify how OnlyMacs interprets your prompt before committing resources. You can simulate the policy check using the classification endpoint. This prevents surprises where a remote agent fails because it cannot access local files, or worse, where sensitive data is inadvertently exposed.
+
+Use the following curl command to test a prompt against the policy engine:
+
+```bash
+curl -X POST http://127.0.0.1:4318/admin/v1/request-policy/classify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "debug this failing login test in my repo",
+    "route_scope": "swarm"
+  }'
+```
+
+The response provides the decision and the specific reasons behind it:
+
+```json
+{
+  "decision": "local_only_recommended",
+  "reasons": [
+    "contains reference to 'repo'",
+    "mentions 'failing test', suggesting local codebase access"
+  ]
+}
+```
+
+<Recipe>
+**Workflow: Validate Prompts in CI/CD**
+1. Construct your prompt string in your script.
+2. Send it to the `/classify` endpoint.
+3. Parse the `decision` field in the JSON response.
+4. If the decision is `local_only_recommended` or `blocked_public`, inject the `--local-first` flag into your final `onlymacs` command.
+5. If the decision is `allow_current_route` or `public_export_required`, proceed with your standard remote flags.
+</Recipe>
+
+## Handling Sensitive Prompts
+
+Prompts containing secrets, credentials, customer data, or internal configurations trigger strict handling rules. The classifier flags keywords such as `private key`, `JWT_SECRET`, `.env`, `payroll`, `medical records`, or `customer DB`. When these appear, the system typically returns `private_export_required` or `blocked_public` to prevent leakage.
+
+To handle these tasks safely, you should force local execution and strictly control data flow. Use the `--local-first` flag to ensure no part of the task leaves your machine. Combine this with `--context-read manual` to prevent automatic file reading, giving you full control over what is exposed. Finally, use `--context-write inbox` to direct output to a local staging area (`~/onlymacs/inbox`) for review before applying changes.
+
+```bash
+onlymacs --local-first --context-read manual --context-write inbox \
+  "review this .env.example for unsafe defaults"
+```
+
+<Decision>
+**Choosing Context Modes for Sensitive Work**
+*   **Use `--context-read manual`** when working with config files or secrets. This stops the agent from guessing which files to read.
+*   **Use `--context-write inbox`** when generating code or configs that might contain errors. This prevents direct overwrites of important files.
+*   **Avoid `--context-write direct`** for any task involving security reviews or credential rotation.
+</Decision>
+
+<Avoid>
+Avoid relying on default settings when working with configuration files. Even if you are only checking an example file like `.env.example`, referencing it in a prompt can leak structural patterns used in your real production configs. Always explicitly set `--local-first` for these tasks.
+</Avoid>
+
+## Optimizing Public-Facing Tasks
+
+Not all work requires local access or secrecy. Tasks like writing documentation, generating blog posts, or analyzing open-source libraries are ideal for remote execution, which can be faster and easier to scale. For these cases, you can optimize performance by using `--remote-first` to route tasks to cloud-based agents and `--simple` to skip unnecessary local safety checks.
+
+```bash
+onlymacs --remote-first --simple \
+  "rewrite this public product announcement in a clearer voice"
+```
+
+This combination works best when your prompt contains no file paths, no internal project names, and clearly public subject matter. Still, you should be careful not to mix public goals with private context. A common mistake is writing a prompt like "Update our public docs based on changes in /src/auth/handler.js." Even though the goal is public documentation, the mention of `/src/auth/handler.js` introduces a local path that may flag the request for local access or block it entirely.
+
+Instead, rephrase the prompt to remove file references while keeping the intent clear: "Update public authentication setup guide to reflect recent API changes." This allows the classifier to confidently assign a `allow_current_route` or `public_export_required` decision, enabling efficient remote processing.
+
+<BestDefault>
+If a task does not require access to your codebase, avoid mentioning file paths or internal directory structures in your prompt. Describe the logical change rather than the physical location.
+</BestDefault>
+
+## Summary: Writing Prompts That Route Correctly
+
+Request Policy is a pattern-matching system guided by security best practices. To make it work for you, align your language with your intent. Be specific about scope: say "in my local project" only when necessary, and omit it for public tasks. Avoid ambiguous terms like "config" or "keys" unless you clarify the context, as these can trigger false positives.
+
+Always test classifications early in your development workflow using the `/classify` endpoint. If you are unsure about a prompt's sensitivity, default to local execution. It is safer and easier to relax restrictions later than to recover from a data leak. Finally, sanitize your inputs before sharing; even non-secret files can reveal structure. By understanding how the classifier reads your prompts, you can write more effective commands and avoid delays caused by misclassification.
+
+<NextStep>
+Now that you understand how Request Policy classifies your inputs, learn how to configure the execution environment to match those decisions. Next, review `--context-read` and `--context-write` settings so you can control file access precisely.
+</NextStep>
