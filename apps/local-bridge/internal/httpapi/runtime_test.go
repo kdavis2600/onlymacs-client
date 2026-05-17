@@ -137,6 +137,55 @@ func TestCoordinatorProxyChoosesScopedJobBoardToken(t *testing.T) {
 	}
 }
 
+func TestCoordinatorSwarmsFallsBackToPublicListWhenStoredRequesterTokenIsStale(t *testing.T) {
+	var calls []string
+	coordinator := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls = append(calls, r.Header.Get("Authorization"))
+		if len(calls) == 1 {
+			if calls[0] != "Bearer stale-requester" {
+				t.Fatalf("expected first swarms request to use stored token, got %q", calls[0])
+			}
+			writeJSON(w, http.StatusUnauthorized, map[string]any{
+				"error": map[string]any{
+					"code":    "UNAUTHORIZED",
+					"message": "valid coordinator token is required",
+				},
+			})
+			return
+		}
+		if auth := r.Header.Get("Authorization"); auth != "" {
+			t.Fatalf("expected retry to omit stale token, got %q", auth)
+		}
+		writeJSON(w, http.StatusOK, coordinatorSwarmsResponse{
+			Swarms: []swarm{{ID: defaultPublicSwarmID, Name: "OnlyMacs Public", Visibility: "public"}},
+		})
+	}))
+	defer coordinator.Close()
+
+	client := newCoordinatorClient(Config{
+		CoordinatorURL:   coordinator.URL,
+		HTTPClient:       coordinator.Client(),
+		RuntimeStatePath: filepath.Join(t.TempDir(), "runtime.json"),
+	})
+	client.rememberCredentials(coordinatorCredentials{Requester: &coordinatorTokenResponse{
+		Token:    "stale-requester",
+		Scope:    "requester",
+		SwarmID:  defaultPublicSwarmID,
+		MemberID: "member-stale",
+	}})
+
+	resp, err := client.swarmsWithContext(context.Background())
+	if err != nil {
+		t.Fatalf("swarms fallback: %v", err)
+	}
+	if len(resp.Swarms) != 1 || resp.Swarms[0].ID != defaultPublicSwarmID {
+		t.Fatalf("expected public swarms fallback, got %+v", resp)
+	}
+	if len(calls) != 2 {
+		t.Fatalf("expected token request and unauthenticated fallback, got %+v", calls)
+	}
+}
+
 func resetLocalNodeIDCacheForTest(t *testing.T) {
 	t.Helper()
 	nodeIDMu.Lock()

@@ -756,7 +756,11 @@ func (c *coordinatorClient) swarmsWithContext(ctx context.Context) (coordinatorS
 		return resp, fmt.Errorf("coordinator URL is not configured")
 	}
 
-	if err := c.getJSONWithToken(ctx, c.baseURL+"/admin/v1/swarms", c.firstRequesterToken(), &resp); err != nil {
+	token := c.firstRequesterToken()
+	if err := c.getJSONWithToken(ctx, c.baseURL+"/admin/v1/swarms", token, &resp); err != nil {
+		if token != "" && isUnauthorizedCoordinatorError(err) {
+			return resp, c.getJSONWithToken(ctx, c.baseURL+"/admin/v1/swarms", "", &resp)
+		}
 		return resp, err
 	}
 	return resp, nil
