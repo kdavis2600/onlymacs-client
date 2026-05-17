@@ -1,0 +1,116 @@
+---
+title: Reports And Ledgers
+description: Understand activity, job reports, provider ledgers, and public-run feedback.
+---
+# Reports And Ledgers
+
+When you submit work to OnlyMacs, execution happens on remote machines outside your direct control. You cannot rely only on a terminal window streaming output in real time. Instead, you rely on structured reports and ledgers to verify that work completed, retrieve artifacts, and diagnose failures. This page shows you how to observe the system without guessing. You will learn to check session states before assuming failure, retrieve outputs safely, provide feedback that improves routing, and generate deep diagnostics when things go wrong. Treat these commands as your primary interface for trust and verification.
+
+<Learn>
+  **What to know:** OnlyMacs separates *submission* from *observation*. Submitting a job returns immediately; observing the result requires explicit status checks and artifact retrieval.
+  **Why It Matters**: Assuming a job failed because your local terminal is quiet leads to wasted time and duplicate runs. The system is asynchronous by design.
+  **Key Workflow**: Check `status` first, retrieve `inbox` second, then `report` outcomes. Use `support-bundle` only when standard tools cannot explain a failure.
+</Learn>
+
+## Checking Session Status and Activity
+
+Before downloading files or re-running a job, you should confirm what actually happened. The `onlymacs status` command is your first line of defense. It queries the coordinator daemon to tell you if the system is alive, whether your job reached the queue, and what its current state is. Check status first so you know whether the job is queued, running, finished, or failed before you spend time on logs or reruns.
+
+In daily development, you will mostly use `onlymacs status latest`. This filters noise by showing only the most recent job you submitted. It returns important metadata: the run ID, the provider Mac ID, start time, duration, and the final state (queued, running, completed, or failed). If you are writing automation scripts, append the `--json` flag to parse this state programmatically. Your script should wait for `"state": "completed"` before attempting to access artifacts.
+
+<BestDefault>
+  Run `onlymacs status latest` immediately after submitting a job. Avoid assuming success or failure based on local shell output. In scripts, always parse the JSON state field before proceeding to downstream steps.
+</BestDefault>
+
+<Avoid>
+  Avoid diving into log files or re-submit jobs until `status` confirms a failure. A common mistake is treating the lack of immediate terminal output as an error. Remote execution is asynchronous; silence usually means the job is still running or waiting in the queue, not that it crashed.
+</Avoid>
+
+```bash
+# Check overall health: is the coordinator daemon active?
+onlymacs status
+
+# Get detailed info about the last submitted job only
+onlymacs status latest
+
+# For automation: parse the state programmatically
+onlymacs status latest --json
+```
+
+If `onlymacs status` hangs or times out, the issue is likely local: the coordinator daemon may be stopped or unreachable. Fix the local service before blaming the remote provider. If the status returns quickly but shows "failed," you can proceed to retrieve partial artifacts or generate a support bundle.
+
+## Retrieving Run Artifacts and Submitting Feedback
+
+Once `status` confirms a job is "completed," you need to bring the results back to your machine. The `onlymacs inbox` command downloads the artifact bundle from the remote Mac. This bundle contains compiled binaries, test logs, build outputs, and any other files generated during the run. The system saves these files locally in a timestamped directory, typically under `~/onlymacs/inbox/`.
+
+Retrieving artifacts is distinct from verifying quality. Just because a job finished does not mean the code works as intended. After inspecting the downloaded files, use `onlymacs report` to attach a human-readable summary to the run record. This report helps you track patterns over time, such as flaky tests that pass on retry or builds that consistently fail on specific macOS versions.
+
+<Recipe>
+  **Standard Verification Loop**
+  1. Wait for completion: `onlymacs status latest`
+  2. Download results: `onlymacs inbox latest`
+  3. Inspect files locally (e.g., run a quick manual test or check logs).
+  4. Record the outcome: `onlymacs report latest --report "Build OK; UI test flaky on first try."`
+</Recipe>
+
+Your feedback report should be concise and outcome-focused. Include the run ID, provider Mac, job type, and a brief summary of what happened. Importantly, the report **does not** include your source code, full prompts, environment variables, or large binary files. This design ensures you can share operational insights without leaking sensitive intellectual property.
+
+<Avoid>
+  Avoid skipping manual validation before reporting. If you label a broken build as "success" to clear your queue, you corrupt your own historical data and mislead future routing decisions. Similarly, avoid pasting full stack traces into the report field; they are not stored. Save detailed logs in your issue tracker and reference them briefly in the OnlyMacs report.
+</Avoid>
+
+```bash
+# Download output files from the last completed job
+onlymacs inbox latest
+
+# Add a brief, meaningful summary of the result
+onlymacs report latest --report "Build succeeded; one flaky test retried."
+```
+
+## Managing Public Swarm Feedback
+
+If you run jobs on the public swarm-where community providers execute your tasks-you have the option to share anonymized feedback with the network. This data helps OnlyMacs improve job routing, identify unreliable providers, and increase overall success rates for everyone. Participation is strictly opt-in, giving you full control over what leaves your machine.
+
+By default, automatic reporting is disabled. No data is sent unless you explicitly enable it. When enabled, the system sends bounded metadata: job shape (e.g., "run tests on macOS 14"), outcome, duration, provider ID, and model version. It does not transmit stdin, file contents, passwords, or absolute paths. Treat this setting like telemetry: if your organization prohibits external data sharing, keep it disabled.
+
+<Decision>
+  | Scenario | Recommended Setting | Reasoning |
+  | :--- | :--- | :--- |
+  | Open Source CI / Public Projects | **Enable** (`onlymacs report enable`) | Helps stabilize the network for similar workloads; no sensitive logic exposed. |
+  | Proprietary / Confidential Code | **Disable** (`onlymacs report disable`) | Adheres to strict data retention policies; prevents even metadata leakage. |
+  | Debugging Intermittent Failures | **Enable** temporarily | Allows the network to learn from your specific failure mode, then disable again. |
+</Decision>
+
+Use `onlymacs report status` to check your current configuration. Enabling this feature adds negligible overhead-just one small HTTPS call per job-but it helps the network if your workload is representative.
+
+```bash
+# See whether automatic feedback is currently active
+onlymacs report status
+
+# Opt into contributing network-wide diagnostics
+onlymacs report enable
+
+# Revert to manual-only reporting
+onlymacs report disable
+```
+
+## Operator-Level Debugging with Support Bundles
+
+Sometimes a job fails in a way that `status` and `inbox` cannot explain. The job might hang indefinitely, return empty output despite a "success" state, or hit repeated provider errors. In these cases, stop guessing and generate a support bundle. The `onlymacs support-bundle` command writes a redacted `support-bundle.json` for the selected run, including run events, status metadata, plan summary, and provider health details.
+
+This tool replaces inefficient manual debugging methods like grepping scattered log files or trying to reproduce race conditions blindly. Those approaches often miss timing gaps or transient errors that the bundle captures systematically. Generate the bundle immediately after reproducing the issue. Delaying risks log rotation or state loss, which makes diagnosis harder.
+
+<Note>
+  The support bundle contains operational details about your local setup and the selected run. Store the resulting `support-bundle.json` securely. Share it only with trusted support personnel or OnlyMacs maintainers.
+</Note>
+
+```bash
+# Create a full diagnostic package for the last failed session
+onlymacs support-bundle latest
+```
+
+If you find yourself spending more than 10 minutes troubleshooting a complex coordinator issue without progress, generate the bundle early. It speeds up resolution far more than speculative fixes. Once you have the bundle, you can open a support ticket or analyze the logs locally if you have the expertise, knowing you have the full context of the failure.
+
+<NextStep>
+  Now that you can observe and verify jobs, learn how to define safe work in [Coordinator Job Board Policy](/docs/coordinator/job-board) and [Policy Options](/docs/coordinator/policies).
+</NextStep>

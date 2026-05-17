@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "session.reserve.request.v1",
+  "type": "object",
+  "properties": {
+    "model": { "type": "string" }
+  }
+}

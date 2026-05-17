@@ -1,0 +1,7 @@
+/.next/
+/node_modules/
+/out/
+/.qa/
+*.log
+.env*
+!.env.example

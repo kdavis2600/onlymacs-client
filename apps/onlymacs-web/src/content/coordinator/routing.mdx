@@ -1,0 +1,133 @@
+---
+title: Coordinator Routing
+description: How OnlyMacs chooses local, trusted, public, remote, and wide routes.
+---
+# Coordinator Routing
+
+When you run an OnlyMacs command, your request does not go straight to a model. It first passes through the **coordinator**, a routing layer that decides where and how your task executes. This decision is based on your data sensitivity, system load, trust settings, and resource requirements. The coordinator evaluates what kind of task you are running, where it can safely execute, and how much compute it needs. Understanding this process helps you avoid surprises like failed commands, unexpected delays, or accidental data exposure. It also lets you write more effective commands by aligning them with OnlyMacs routing logic.
+
+<Learn>
+The coordinator acts as a traffic controller for your AI tasks. It inspects your prompt and flags to classify the work as simple, sensitive, or heavy. It then scans available compute resources, starting from your local machine and expanding outward only if your route strategy permits. Low-risk tasks move quickly, while high-risk operations are contained or paused for review. Your goal is to choose a route strategy that matches your security perimeter: too wide risks exposure, while too narrow causes unnecessary failures.
+</Learn>
+
+## How Routing Works From Command to Execution
+
+When you type a command like `onlymacs "summarize this document"`, the CLI sends your prompt to your local bridge, a lightweight daemon running on your Mac. The bridge inspects the command for context clues, such as file references, edit requests, or long-processing needs. Based on your flags and policy rules, the coordinator classifies the task. It then scans available compute resources according to your chosen route strategy. Once a suitable worker is found or confirmed, execution begins.
+
+This flow ensures that low-risk tasks move quickly while high-risk ones are contained. A common mistake is assuming all prompts are treated equally. A command like `"rewrite my README"` might route remotely without issue, but `"update my API keys"` will likely halt unless explicitly allowed via flags like `--local-first`. Always start without explicit routing flags to see how the system interprets your task, then tighten constraints if the default behavior does not match your safety requirements.
+
+## Choosing a Route Strategy
+
+Your choice of routing flag defines the boundaries within which OnlyMacs searches for compute. There are four primary strategies: `--local-first`, `--trusted-only`, `--remote-first`, and `--go-wide`. Each serves a specific use case regarding security and performance.
+
+### Use Local First for Sensitive or Stateful Work
+
+Use `--local-first` when your task involves private data, authentication logic, or file modifications that must stay on your machine. With this flag, the coordinator attempts to run the task locally. If your Mac is busy or lacks capacity, the job fails by design. No fallback to remote nodes occurs. This is ideal for code reviews involving secrets, drafting internal documentation, or testing configuration changes.
+
+<BestDefault>
+Combine `--local-first` with `--context-read` to signal intent clearly. This tells the coordinator exactly which files to inspect before attempting execution.
+
+```bash
+onlymacs --local-first --context-read src/auth \
+  "check for hardcoded tokens in auth modules"
+```
+</BestDefault>
+
+<Avoid>
+Avoid using `--local-first` for large-scale analysis if your Mac is underpowered. If your repository is massive and your local resources are limited, expect timeouts or slow responses. The system will not offload this work to help you; it will wait or fail.
+</Avoid>
+
+### Use Trusted Only to Use Your Own Devices Safely
+
+If you own multiple Macs, such as a laptop, desktop, and server at home, you can combine their resources securely using `--trusted-only`. OnlyMacs uses cryptographic identities to verify each device. When you add a new Mac to your fleet, you sign its key. After that, `--trusted-only` routes tasks only to those signed machines. This is perfect for parallel linting across repos, building summaries from internal wikis, or running tests on staging code.
+
+<Recipe>
+Always pair `--trusted-only` with context flags so workers know what access they need upfront. Before launching jobs, run `onlymacs swarms` to confirm the machines you expect are visible.
+
+```bash
+onlymacs --trusted-only --context-read git --context-write staged \
+  "refactor these components and stage the changes"
+```
+</Recipe>
+
+<Note>
+Network latency still applies even with trusted devices. They must communicate over your connection, so avoid assuming performance equals local execution. If you see delays, check your network topology rather than the coordinator logic.
+</Note>
+
+### Use Remote First for Fast Public Stateless Tasks
+
+For non-sensitive work where speed matters most, `--remote-first` skips local evaluation and bids the task to the broader network immediately. These nodes are part of a shared swarm, not your personal devices, but the coordinator enforces basic safety such as blocking file access. Ideal uses include rewriting public blog posts, brainstorming feature names, or translating open-source docs. Add `--simple` to prevent the task from being escalated into a planned or persistent job.
+
+<Decision>
+Use `--remote-first --simple` together for fire-and-forget public text processing. Avoid using this for anything referencing local paths, environment variables, or proprietary systems, even obliquely. If response quality varies, run a planning pass first using `onlymacs plan best-available` to compare route options before committing to execution.
+</Decision>
+
+```bash
+onlymacs --remote-first --simple \
+  "rephrase this release note to sound more approachable"
+```
+
+### Use Go Wide to Parallelize Heavy Jobs
+
+When you have a large workload, such as auditing hundreds of files or regenerating test fixtures, `--go-wide=N` splits the task into N parallel lanes. Each lane runs independently on an available worker, and results are collected and merged at the end. The coordinator breaks the input scope into chunks, and workers claim lanes dynamically as they become free. If fewer than N workers are available, some lanes wait.
+
+<Example>
+Start small with `--go-wide=2` to observe coordination overhead. Ensure enough trusted devices are online before increasing the count. Running `--go-wide=8` with only two active peers leads to idle waiting. Also, always include `--allow-tests` if your job requires execution; otherwise, any step involving run, exec, or test will be blocked silently.
+
+```bash
+onlymacs --go-wide=4 --trusted-only --allow-tests \
+  "analyze all test files in /spec and report flaky suites"
+```
+</Example>
+
+<Avoid>
+Avoid omitting `--trusted-only` when handling private data with `--go-wide`. Without it, a broad job can use routes outside your trusted swarm if your other settings allow that. Avoid skipping `--allow-tests` when your job requires execution.
+</Avoid>
+
+## Managing Confirmations and Safety Stops
+
+Sometimes the coordinator pauses and asks you to confirm a route. This is a safeguard, not a bug. These prompts appear when the task requests write access from a non-local node, you are launching six or more parallel lanes, the model required has elevated permissions like shell access, or context flags suggest potential side effects. You should treat these prompts as final review checkpoints.
+
+Answering yes gives explicit consent, meaning you have reviewed the implications of where the task is running, what it can do, and whether the data is safe. Only use `--yes` to automate confirmation in scripts. Avoid it in interactive sessions. In automation, always combine `--yes` with strict routing like `--trusted-only` and input validation. Adding `--yes` just to make the CLI less chatty in interactive mode bypasses important warnings about unsafe operations.
+
+<Recipe>
+Safe usage in unattended CI jobs with vetted inputs:
+```bash
+onlymacs --go-wide=4 --trusted-only --yes \
+  "regenerate snapshots for merged PRs"
+```
+
+Risky usage in interactive sessions with dynamic input:
+```bash
+onlymacs --remote-first --yes "process $USER_INPUT"
+```
+</Recipe>
+
+## Common Pitfalls and How to Avoid Them
+
+Running `--go-wide` during off-peak hours often leads to long waits or stuck lanes because fewer workers are available. Reduce the lane count or pre-warm trusted devices to fix this. Using `--remote-first` with file references causes silent failure or data leak risk. Switch to `--local-first` or remove path arguments to resolve this. Forgetting `--allow-tests` in test-heavy jobs results in commands being ignored or partial results. Add the flag explicitly when execution is expected. Relying on default routing for sensitive tasks can lead to accidental remote dispatch. Set `--local-first` early, then relax if needed.
+
+If the initial coordinator output says "waiting for workers" for more than 15 seconds, check device status or reduce scope. Press `Ctrl+C` to recover, then retry with fewer lanes or tighter trust bounds.
+
+| Mistake | Consequence | Fix |
+| :--- | :--- | :--- |
+| Running `--go-wide` during off-peak hours | Long waits or stuck lanes | Reduce lane count or pre-warm trusted devices |
+| Using `--remote-first` with file references | Silent failure or data leak risk | Switch to `--local-first` or remove path arguments |
+| Forgetting `--allow-tests` in test-heavy jobs | Commands ignored or partial results | Add flag explicitly when execution is expected |
+| Relying on default routing for sensitive tasks | Accidental remote dispatch | Set `--local-first` early, then relax if needed |
+
+## Summary Match Strategy to Task Type
+
+Routing matches execution context to your actual needs, with speed as only one part of the decision. By understanding how the coordinator thinks, you can write clearer commands, avoid unnecessary failures, and keep sensitive work exactly where it belongs.
+
+| Task Type | Example | Recommended Flags |
+| :--- | :--- | :--- |
+| Private code review | Audit auth logic | `--local-first --context-read src/auth` |
+| Multi-device build | Lint entire monorepo | `--trusted-only --go-wide=3` |
+| Public content edit | Rewrite marketing copy | `--remote-first --simple` |
+| Large test analysis | Find flaky specs | `--go-wide=4 --trusted-only --allow-tests` |
+| Unattended script | Nightly report gen | `--trusted-only --yes` (with caution) |
+
+<NextStep>
+Now that you understand how to route tasks safely, learn how to define the scope of data the coordinator can access. Read the guide on Context Modes to master `--context-read` and `--context-write` settings.
+</NextStep>

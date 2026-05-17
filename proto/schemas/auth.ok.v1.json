@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://onlymacs.local/proto/schemas/auth.ok.v1.json",
+  "title": "auth.ok v1",
+  "type": "object",
+  "required": ["v", "type", "id", "session_id"],
+  "additionalProperties": false,
+  "properties": {
+    "v": {
+      "type": "string",
+      "const": "v1"
+    },
+    "type": {
+      "type": "string",
+      "const": "auth.ok"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
+

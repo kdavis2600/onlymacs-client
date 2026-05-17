@@ -1,0 +1,161 @@
+---
+title: Route Presets
+description: Use quick, balanced, wide, local-first, trusted-only, offload-max, remote-first, precise, best, coder, and fast.
+---
+# Route Presets
+
+Route presets are strategic policies that tell OnlyMacs how to balance speed, cost, privacy, and quality for a specific task. Instead of manually configuring model selection, latency tolerance, or data routing rules for every command, you apply a named preset like `quick`, `local-first`, or `best-available`. These presets act as decision templates: you declare your primary constraint ("I need this fast" or "this must stay private"), and OnlyMacs constructs the execution path accordingly.
+
+**Presets change behavior as well as performance.** `local-first` enforces a hard boundary that keeps data on your machine. `offload-max` tells OnlyMacs to exhaust free local capacity before spending any tokens. Misapplying a preset can lead to failed tasks, unexpected costs, or security violations. This page explains the operational reality of each preset, helping you choose the right tool for your current workflow.
+
+<Learn>
+**What to know:** A route preset is a pre-configured policy bundle. It determines three things:
+1.  **Compute Location**: Where the work happens (Your Mac, trusted network nodes, or remote cloud).
+2.  **Model Selection**: Which AI model is chosen based on capability vs. speed.
+3.  **Execution Strategy**: Whether tasks run sequentially, in parallel lanes, or with retry logic.
+
+You apply these presets directly in commands like `onlymacs go`, `onlymacs chat`, `onlymacs plan`, or `onlymacs start`.
+</Learn>
+
+## Quick and Fast Workflows
+
+Use `quick` when you are in an interactive loop and need a single, immediate response. This preset prioritizes low-latency execution above all else. It selects the fastest available route capable of handling your input size and does **not** retry on failure unless explicitly configured. There is no fallback to more reliable models if the first attempt fails. This makes it ideal for transient queries where consistency across runs matters less than responsiveness, such as summarizing a file, checking syntax, or getting a definition during coding.
+
+```bash
+onlymacs go quick "summarize this README"
+```
+
+The `fast` preset is similar but optimized specifically for lightweight chat interactions. Use it when refining prompts, brainstorming names, or iterating on small code snippets with minimal context history. Unlike `quick`, which applies broadly to any task type, `fast` assumes a narrow scope: short inputs, simple outputs, and low cognitive load. Behind the scenes, it may route to smaller, faster models tuned for conversational agility rather than deep reasoning.
+
+```bash
+onlymacs chat fast "give me three clearer names for this setting"
+```
+
+<BestDefault>
+**When to use**: Live editing sessions where you are waiting for feedback, or non-important tasks where approximate answers are acceptable.
+**Command pattern**: `onlymacs go quick "<prompt>"` or `onlymacs chat fast "<prompt>"`.
+</BestDefault>
+
+<Avoid>
+**Avoid using** for batch processing, audits, or any workflow requiring reproducibility. Avoid using these for large files or complex logic; the model might truncate input or oversimplify the solution to meet speed targets. If you find yourself re-running the same `quick` command because results feel flaky, switch to `balanced` or `precise`.
+</Avoid>
+
+## Balanced and General Purpose
+
+`balanced` is the default for good reason: it offers a stable middle ground between speed, cost, and accuracy. When you do not specify a preset, OnlyMacs often falls back to behavior close to `balanced`. It dynamically chooses routes based on current system load, avoiding unnecessary remote calls while still delivering reliable results. This preset evaluates multiple factors-model capability, expected latency, token cost, and local availability-but avoids extremes. It will offload to remote servers only if your Mac is busy or the task exceeds local memory limits.
+
+```bash
+onlymacs go balanced "review this change and tell me what matters"
+```
+
+`balanced` is the everyday preset: efficient, dependable, and adaptive, but not specialized. It is the safest choice for code reviews, documentation generation, explaining unfamiliar code, and daily development questions. Still, be aware that if your organization has strict data residency policies, `balanced` may occasionally send data off-device. In those cases, explicitly use `local-first`. Similarly, if you are trying to minimize paid token usage, `balanced` may spend credits sooner than necessary; opt for `offload-max` instead.
+
+## Parallel and Wide Execution
+
+When a problem can be broken into independent parts, `wide` unlocks parallel processing. Instead of running one model sequentially, `wide` splits the task across multiple concurrent lanes. You specify how many lanes with an integer argument. Each lane receives a portion of the input (e.g., different files or hypotheses) and processes them simultaneously. Once all lanes complete, OnlyMacs aggregates the results.
+
+```bash
+onlymacs go wide 6 "split this bug hunt into parallel tracks"
+```
+
+If you request `wide 6`, OnlyMacs attempts to run six instances at once. Local resources are used first. If your Mac cannot handle six threads, excess lanes are offloaded according to your account settings (`trusted-only`, `remote-first`, etc.). The important constraint here is independence: all sub-tasks must be **independent**. No lane should rely on output from another. This preset excels at scanning large repositories for anti-patterns, testing multiple refactoring strategies, or analyzing logs across modules.
+
+<Decision>
+**Dependency Check**: Before using `wide`, ask: "Can step B run without knowing the result of step A?"
+*   **Yes**: Use `wide`. Example: "Check these 50 files for TODO comments."
+*   **No**: Avoid using `wide`. Example: "Rewrite function A, then update callers B and C."
+</Decision>
+
+Using `wide` on dependent workflows leads to race conditions or incomplete outputs. For example, avoid running `onlymacs go wide 3 "rewrite function A, then update callers B and C"`. There is no guarantee B and C see the updated version of A. Instead, break it into two steps: first rewrite A, then run a separate `wide` command to update its callers. For maximum efficiency, pair `wide` with `offload-max` when cost is a concern, or `remote-first` when speed matters most.
+
+## Privacy and Data Locality
+
+Data sovereignty is non-negotiable in many environments. OnlyMacs provides two distinct presets to enforce data boundaries: `local-first` and `trusted-only`. Understanding the difference prevents accidental data leakage.
+
+### `local-first`: Keep Everything On Your Mac
+
+Use `local-first` when working with sensitive content: internal authentication flows, unreleased features, API keys, or regulated data.
+
+```bash
+onlymacs go local-first "review this private auth flow without leaving this Mac"
+```
+
+OnlyMacs attempts to process the entire request using only your current machine. If the task exceeds local capabilities (e.g., memory limit, model size), the command may fail or queue until resources free up, depending on your configuration. It will **not** silently send data to the cloud. This ensures full control over data movement but may take longer or stall under heavy local load. Use this preset when compliance, legal, or team policy requires strict data isolation.
+
+### `trusted-only`: Extend to Your Own Network
+
+If you manage a group of Macs-a home lab, office cluster, or CI machines-and want to use their combined power without involving third-party servers, use `trusted-only`.
+
+```bash
+onlymacs go trusted-only "use my Macs only for this repo review"
+```
+
+This expands beyond the local device but restricts routing strictly to Macs you have previously authenticated and marked as trusted. This adds capacity, but it also introduces shared risk. Verify your trusted member list regularly, because a compromised or forgotten Mac in the group can still become part of a sensitive workflow. Remove old devices after team changes, and avoid `trusted-only` until you have audited the machines that can receive work.
+
+## Cost Optimization and Offloading
+
+Managing token spend is important during long debugging or refactoring sessions. Two presets help you control costs by altering how OnlyMacs prioritizes compute sources: `offload-max` and `remote-first`.
+
+### `offload-max`: Maximize Free Compute
+
+Use `offload-max` when you want to delay or avoid spending paid tokens. It aggressively seeks unused capacity on your local and trusted Macs before considering remote options.
+
+```bash
+onlymacs go offload-max "debug this failing test without burning paid tokens"
+```
+
+This preset waits for idle cycles on your machines rather than buying instant access. If no free capacity is available, it queues tasks. This behavior prioritizes cost savings over speed, making it ideal for background tasks like linting, testing, documentation updates, or exploratory analysis. The trade-off is higher latency; you are relying on opportunistic compute. Avoid using `offload-max` for urgent fixes or time-bound workflows, as delays during peak usage times are expected.
+
+### `remote-first`: Speed Over Savings
+
+On the other hand, use `remote-first` when speed and reliability matter more than cost, and privacy is not a concern.
+
+```bash
+onlymacs go remote-first "rewrite this public changelog in a clearer voice"
+```
+
+This preset routes immediately to high-performance remote models, bypassing local bottlenecks. Since it does not wait for local hardware, responses are typically faster and more consistent. It is best suited for public-facing content, open-source contributions, marketing copy, and non-sensitive automation. Because it uses paid infrastructure freely, monitor your usage if you are near quota limits.
+
+## Quality and Specialized Models
+
+Sometimes generic models are insufficient. For complex reasoning, architectural planning, or important decisions, you need stronger, more capable models. OnlyMacs offers specialized presets to access these capabilities.
+
+### `coder`: Optimized for Software Engineering
+
+The `coder` preset ensures OnlyMacs selects a model trained and tuned for code understanding. These models have larger context windows, a better grasp of dependency graphs, and deeper knowledge of language idioms and frameworks.
+
+```bash
+onlymacs plan coder 3 "design the migration plan"
+```
+
+In this example, the number `3` indicates complexity level; higher values trigger deeper analysis, multi-step planning, and broader context retrieval. Use `coder` when migrating between libraries or versions, refactoring large components, designing new APIs, or debugging subtle logic errors. Avoid using `coder` for trivial tasks like renaming variables, as you will waste time and tokens on unnecessary depth.
+
+### `precise`, `best`, and `best-available`: Maximum Quality
+
+These three presets are functionally equivalent: they instruct OnlyMacs to ignore cost and latency constraints and select the highest-quality route available.
+
+```bash
+onlymacs start best-available 2 "review this architecture decision carefully"
+```
+
+They prioritize models with proven track records in reasoning, factuality, and error resistance. Expect slower response times due to model depth and higher token consumption, but benefit from a lower risk of hallucinations or shallow analysis. Reserve these for final design approvals, security reviews, compliance checks, and sensitive technical decisions. Avoid using them casually; being wrong in these scenarios is more expensive than being slow.
+
+## Decision Guide: Choosing the Right Preset
+
+Choosing wisely starts with asking: *What constraint matters most here?* Is it time, money, privacy, or correctness? Answer that, and the right preset becomes clear.
+
+| Goal | Recommended Preset | Avoid |
+| :--- | :--- | :--- |
+| Immediate feedback in editing | `quick`, `fast` | Batch jobs, important logic |
+| Everyday coding tasks | `balanced` | Sensitive data, strict budgets |
+| Splitting work across cores/nodes | `wide N` | Sequential dependencies |
+| Keep data on-device | `local-first` | Large tasks on weak hardware |
+| Use only your own machines | `trusted-only` | Unsecured or unmanaged nodes |
+| Minimize token spend | `offload-max` | Time-sensitive tasks |
+| Maximize speed regardless of cost | `remote-first` | Private or regulated data |
+| Deep code reasoning | `coder` | Simple queries |
+| Highest accuracy, no compromises | `precise`, `best`, `best-available` | Routine or low-risk work |
+
+<NextStep>
+Now that you understand how to direct traffic with route presets, learn how to monitor execution in [Extended Runs](/docs/cli/extended-runs) and review completed work in [Inbox And Reporting](/docs/cli/inbox-reporting).
+</NextStep>

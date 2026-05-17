@@ -1,0 +1,176 @@
+---
+title: Job Board
+description: Use ticket-board work for go-wide jobs and worker loops.
+---
+# Job Board
+
+The job board is OnlyMacs' coordination layer for work that is too large or complex for a single pass. Instead of asking one model to solve an entire problem at once, you break the work into independent units called **tickets**. A **job** represents your overall goal-such as auditing a codebase or building a feature-while each ticket is a specific, actionable step toward that goal.
+
+This architecture allows multiple workers (automated loops or interactive sessions) to tackle pieces of work in parallel. The job board tracks progress, assigns tickets based on capability, and collects results. Still, this flexibility requires you to make deliberate choices about how work is split and executed. You can let OnlyMacs automate the splitting and assignment using `--go-wide`, or you can define the structure manually for precise control. Understanding when to use each approach prevents wasted time and ensures your workers have the context they need to succeed.
+
+<Learn>
+**What to know:** The job board separates *planning* (defining the job and tickets) from *execution* (workers claiming and running tickets).
+- **Job:** The container for a larger objective.
+- **Ticket:** A single unit of work with defined scope, capabilities, and context permissions.
+- **Worker:** An agent that claims tickets matching its capabilities and executes them.
+- **Policy:** Global rules that override local worker flags to ensure safety.
+</Learn>
+
+## Starting with Go Wide
+
+Use the `--go-wide` flag when you have a substantial task that can be safely divided into parallel lanes without needing a custom plan. This flag instructs OnlyMacs to automatically create a job, split your prompt into discrete tickets, and assign them to available workers in a single command. It is the most efficient entry point for prototyping, refactoring, or auditing tasks where the subtasks are similar in nature.
+
+When you run a command with `--go-wide=N`, OnlyMacs parses your prompt to understand the full scope, splits it into `N` roughly equal lanes of work, creates a job with corresponding tickets, and immediately assigns them to workers that match the required capabilities. Each ticket inherits the read and write contexts from your parent command. For instance, if you specify `--context-read git`, every worker sees the current Git state; if you specify `--context-write staged`, all changes are routed to a staging area rather than being applied directly to the source. This isolation is important for preventing unreviewed changes from leaking into your codebase during parallel execution.
+
+<BestDefault>
+**Recommended Pattern for Parallel Audits**
+Always pair `--go-wide` with explicit context controls to ensure workers operate on consistent data and cannot overwrite production files unexpectedly.
+
+```bash
+onlymacs go wide \
+  --go-wide=4 \
+  --trusted-only \
+  --context-read git \
+  --context-write staged \
+  "split this app audit into four focused lanes: auth, UI, performance, and dependencies"
+```
+
+This configuration limits execution to trusted machines, ensures every worker sees up-to-date code via Git, and routes all output to a safe staging zone for later inspection.
+</BestDefault>
+
+<Avoid>
+**Common Mistakes with Go Wide**
+- **Omitting context flags:** Without explicit `--context-read` or `--context-write` settings, workers may operate on stale data or write directly to source files, bypassing your review process.
+- **Over-provisioning lanes on weak hardware:** Setting `--go-wide` to a high number on a machine with limited CPU or memory causes resource contention. Start with `--go-wide=2` or `3` and scale up only after verifying system stability.
+- **Assuming immediate completion:** Tickets require active workers to claim them. If no worker loop is running or no worker matches the required capability, tickets will sit idle regardless of how many lanes you create.
+</Avoid>
+
+<Decision>
+**Should I use `--go-wide` or manual jobs?**
+
+| Scenario | Recommended Approach | Reason |
+| :--- | :--- | :--- |
+| Prototyping or exploring a new codebase | `--go-wide` | Fast setup; automatic splitting reduces boilerplate. |
+| Task naturally splits into similar subtasks | `--go-wide` | Efficient parallelization with minimal config. |
+| Different tickets need different capabilities | Manual Jobs | Allows per-ticket capability and context definition. |
+| You have a pre-defined plan (e.g., CI script) | Manual Jobs | Lets you inject exact steps without auto-splitting logic. |
+| You need to review tickets before execution | Manual Jobs | Creates tickets first; you control when workers claim them. |
+</Decision>
+
+## Creating Jobs Manually
+
+Manual job creation gives you full control over the structure of work, allowing you to define exactly what needs to be done before handing it off to workers. Use this approach when you have a predefined plan from a design document or CI pipeline, when different parts of the job require distinct capabilities (e.g., some tickets need Docker while others need frontend tools), or when you want to review the ticket breakdown before any execution begins.
+
+To create a job manually, you can run `onlymacs start` or `onlymacs plan` with a prompt, which generates tickets based on internal reasoning similar to `--go-wide` but without immediate assignment. For precise control, provide your own ticket list via JSON using the `--plan` flag. Your JSON file should be an array of objects, each defining a `title`, `capability`, and optional context constraints. This format lets you predefine context access, required permissions, and capability labels per ticket, ensuring that only workers with the correct setup can claim specific tasks.
+
+<Recipe>
+**Defining a Custom Job with JSON**
+Create a `tickets.json` file to specify exact requirements for each step.
+
+```json
+[
+  {
+    "title": "Create responsive header component",
+    "capability": "frontend",
+    "context_read": ["git", "figma"],
+    "context_write": "staged"
+  },
+  {
+    "title": "Implement form validation logic",
+    "capability": "javascript",
+    "context_read": ["git", "api-docs"],
+    "context_write": "staged",
+    "requires": ["--allow-tests"]
+  }
+]
+```
+
+Submit the job using the plan file:
+```bash
+onlymacs start --plan tickets.json "landing page implementation"
+```
+</Recipe>
+
+<Note>
+**Silent Failure Warning:** Unlike `--go-wide`, which often triggers immediate claiming, manual job creation only posts tickets to the board. No work happens until a worker explicitly claims a ticket. If you create a job and see no activity, check that a worker loop is running and that its `--capability` flag matches at least one of your tickets.
+</Note>
+
+<BestDefault>
+**Validate Before Submitting**
+Test your ticket structure locally to avoid syntax errors or mismatched capabilities.
+
+```bash
+# Check JSON syntax
+jq empty tickets.json || echo "Invalid JSON"
+
+# Count expected tickets
+jq length tickets.json
+
+# Preview the created job
+JOB_ID=$(onlymacs start --plan tickets.json "my job" --json | jq -r '.id')
+onlymacs status $JOB_ID
+```
+Use the status output to verify that the number of tickets matches expectations and that capabilities align with your available workers.
+</BestDefault>
+
+## Claiming and Running Work
+
+Once tickets exist on the board, they must be claimed by workers. OnlyMacs uses a pull-based model where workers match against ticket capabilities and claim eligible work. Workers generally fall into two categories: **interactive/manual** sessions for debugging or ad-hoc tasks, and **persistent loops** for continuous, automated processing. Both types use the same underlying mechanism to match capabilities, claim tickets, execute the work, and report results back to the job board.
+
+For manual claiming, use the `onlymacs go` command with specific flags to target a job or let the system find available work. This is useful for debugging a specific ticket or running ad-hoc work on a development machine. For production workflows, however, you should rely on persistent worker loops. Run `onlymacs go` with the `--watch` flag (or configure a daemon) to keep a worker continuously monitoring the board. You can control concurrency with the `--go-wide-lanes` or `--wide-lanes` flags (depending on your version) or by managing multiple worker processes, ensuring that a single machine does not become overloaded.
+
+<Recipe>
+**Running a Persistent Worker Loop**
+Start a worker that watches for new tickets and processes them automatically.
+
+```bash
+onlymacs go wide \
+  --watch \
+  --wide-lanes 2 \
+  --capability frontend \
+  --allow-tests \
+  --trusted-only
+```
+
+This command:
+- Watches the job board continuously.
+- Maintains up to 2 active slots (processing two tickets concurrently).
+- Claims only tickets labeled with `frontend` capability.
+- Allows test execution *if permitted by swarm policy*.
+</Recipe>
+
+<Decision>
+**Choosing Slot Counts (`--wide-lanes`)**
+Set the number of concurrent lanes based on your machine's resources to avoid thrashing.
+
+| Machine Type | Recommended Lanes | Reasoning |
+| :--- | :--- | :--- |
+| Laptop (daily driver) | 1 | Prevents interference with your local development work. |
+| Dedicated 4-core Desktop | 2-3 | Balances throughput with thermal and memory limits. |
+| Powerful Server / CI Agent | 4+ | Maximize utilization; monitor load and adjust upward cautiously. |
+</Decision>
+
+<Avoid>
+**Worker Configuration Pitfalls**
+- **Running untrusted workers with broad permissions:** Only trusted machines should run `--watch` loops. An untrusted machine could claim sensitive tickets or exfiltrate data. Always combine `--capability` with `--trusted-only`.
+- **Ignoring permission flags:** If a ticket requires test execution, the worker must include `--allow-tests`. Without it, the worker cannot claim the ticket, leading to idle work.
+- **Resource contention:** Too many lanes on a single machine cause workers to slow each other down or crash due to memory pressure. Monitor system usage with `top` or `htop`; if CPU stays above 80% or swapping occurs, reduce the lane count.
+</Avoid>
+
+## Understanding Policy and Safety
+
+Security in OnlyMacs is enforced at the **swarm level** as well as on each machine. This means that even if a worker allows a specific action locally (e.g., using `--allow-tests`), it cannot perform that action unless the global **swarm policy** permits it. This layered enforcement prevents misconfigurations or rogue machines from bypassing organizational safeguards. Local flags are requests, such as "I am willing to run tests." The swarm policy is the final authority that decides whether tests are allowed there. Both conditions must be true for an action to proceed: the swarm policy must allow it, and the worker must opt in with the corresponding flag.
+
+<Example>
+**Policy vs. Flag Interaction**
+- **Scenario A:** Swarm policy says `deny tests`. Worker runs with `--allow-tests`.
+  - **Result:** Tests are blocked. The global policy overrides the local flag.
+- **Scenario B:** Swarm policy says `allow tests`. Worker omits `--allow-tests`.
+  - **Result:** Tests are blocked. The worker did not opt in, so it cannot claim tickets requiring tests.
+</Example>
+
+If a worker fails to install packages or run tests, diagnose the issue in this order: first, check the swarm policy, as this is the most common root cause; second, verify the worker includes the needed flag; and finally, inspect logs for execution errors. Skipping the policy check leads to wasted time tweaking worker commands that will not succeed because the swarm blocks the operation outright. Before starting any worker loop, especially in shared environments, review the coordinator policy to confirm whether actions like `tests`, `installs`, or `network` access are allowed, and adjust centrally if needed while considering the impact on other team members.
+
+<NextStep>
+Now that you understand how to structure jobs and manage workers, learn how to monitor progress in [Extended Runs](/docs/cli/extended-runs) and how to control file access in [Context Files](/docs/reference/context-files).
+</NextStep>

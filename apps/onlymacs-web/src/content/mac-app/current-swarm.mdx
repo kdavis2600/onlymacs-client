@@ -1,0 +1,68 @@
+---
+title: Current Swarm
+description: See the swarm this Mac is using right now.
+---
+# Current Swarm
+
+The **Current Swarm** view shows where OnlyMacs can send work right now. Check it
+before private work, after sleep or network changes, and whenever a public or
+trusted swarm is missing.
+
+<Learn>
+A swarm is the group of Macs or remote capacity available to a request. A local
+route stays on This Mac. A private swarm uses approved Macs. A public route is
+for public-safe input only.
+</Learn>
+
+---
+
+## What To Look For
+
+| Field | What it answers |
+| :--- | :--- |
+| Active swarm | Which swarm is selected |
+| Trust type | Local, private/trusted, or public-safe |
+| Role | Whether this Mac requests work, provides work, or both |
+| Members | Which trusted Macs are visible |
+| Freshness | Whether the connection state is recent |
+
+If the swarm you expect is missing, check that the app is running on the other
+Mac, the machine is awake, and Runtime is ready on both sides.
+
+---
+
+## Route From Claude Code Or Codex
+
+Use route words in the assistant prompt when the trust boundary matters:
+
+```text
+/onlymacs go local-first "draft a local-only checklist for reviewing secrets"
+```
+
+```text
+/onlymacs go trusted-only "review my current diff"
+```
+
+```text
+/onlymacs go remote-first "draft 10 public launch headlines for a Mac AI assistant"
+```
+
+If trusted Macs are unavailable, do not automatically switch private work to the
+public swarm. Fix the Current Swarm or Runtime state first.
+
+---
+
+## Common Fixes
+
+| Symptom | First app check |
+| :--- | :--- |
+| Trusted Mac missing | Current Swarm on both Macs, then Runtime |
+| Public swarm missing | Current Swarm freshness and hosted coordinator state |
+| Request stays local unexpectedly | Current Swarm membership and route policy |
+| This Mac is helping when it should not | Sharing settings |
+
+<NextStep>
+Next, open [Sharing](/docs/mac-app/sharing) to control whether this Mac accepts
+incoming work, or use [Choose a Route](/docs/routes) to pick the right route for
+a request.
+</NextStep>

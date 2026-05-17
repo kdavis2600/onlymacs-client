@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "session.release.ok.v1",
+  "type": "object",
+  "required": ["session_id", "status"],
+  "properties": {
+    "session_id": { "type": "string" },
+    "status": { "type": "string" }
+  }
+}

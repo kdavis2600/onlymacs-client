@@ -1,0 +1,11 @@
+{
+  "name": "source-mini-app",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "react": "^18.3.0"
+  }
+}

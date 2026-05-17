@@ -1,0 +1,198 @@
+---
+title: Coordinator Policy Options
+description: Every discoverability, join, context, and ticket policy option in approachable language.
+---
+# Coordinator Policy Options
+
+The coordinator is the final authority on what your swarm can do. It does not matter how confident your CLI command sounds or how trusted you believe an agent to be; if the policy says no, the action is blocked. These policies are not suggestions-they are enforcement rules designed to protect your codebase while enabling automation.
+
+This page explains how to configure these rules effectively. You will learn what each setting controls, when to apply it, and how the coordinator behaves in real workflows. We focus on safe defaults and common pitfalls so you can set up your environment once and work without constant friction.
+
+<Learn>
+**What to know:** Policies act as a dual-gate system. For any sensitive action to occur, two conditions must be met simultaneously: the server-side policy must allow the capability, and your local CLI command must explicitly request it. If either side denies the action, the coordinator blocks it. This design prevents accidental escalation even if your configuration drifts over time.
+</Learn>
+
+## Discoverability: Who Can Find Your Swarm?
+
+Discoverability defines whether your swarm appears in public directories and sets the baseline security posture for all operations within it. This is the first trust boundary before authentication begins. The coordinator uses this setting to automatically enforce safety defaults, meaning your choice here dictates what other policies are even possible.
+
+If you choose `listed`, your swarm is visible to others, which triggers strict safety limits. In this mode, workers cannot write files directly, install dependencies, or read arbitrary files without explicit approval. The system overrides unsafe requests back to safe defaults regardless of your CLI flags. Use `listed` only for open-source collaboration where transparency matters more than automation speed.
+
+For team projects or internal tools, `unlisted` is the standard choice. Workers in unlisted swarms can read the full project folder and prepare changes, but they still cannot install packages by default. This mode balances productivity with safety. If you are working on sensitive infrastructure that must stay out of directory listings, even from users who might guess the name, use `hidden`. Functionally, `hidden` behaves like `unlisted`, but it removes the swarm from discovery entirely.
+
+<BestDefault>
+**Recommended Settings by Use Case**
+*   **Open Collaboration:** Use `listed`. Expect strict limits on writes and installs.
+*   **Team Development:** Use `unlisted`. Allows full project reading and staged writes.
+*   **Sensitive Infrastructure:** Use `hidden`. Same capabilities as unlisted but invisible to discovery.
+</BestDefault>
+
+<Avoid>
+**Common Mistakes**
+*   Avoid assuming `listed` gives you flexibility. The system enforces strict limits on public swarms regardless of CLI flags.
+*   Avoid relying on obscure names for privacy. If you need secrecy, explicitly set `unlisted` or `hidden`.
+*   Avoid attempting to mix high-trust workflows (like direct writes) with `listed` visibility. The coordinator will reject these configurations.
+</Avoid>
+
+<Note>
+**Legacy Terminology:** Older documentation may refer to `public`, `private`, `invite`, or `invite_link`. The coordinator normalizes these automatically: `public` becomes `listed`, while `private`, `invite`, and `invite_link` become `unlisted`. You do not need to preserve old values.
+</Note>
+
+## Join Policy: How Workers Authenticate
+
+The join policy determines how a worker proves its identity before entering the swarm. This is distinct from what the worker is allowed to *do* once inside; it is strictly about getting through the door. Your choice here depends on whether you prioritize accessibility or control.
+
+Use `open` only when accessibility matters more than security, such as for public demos where anyone with the swarm ID should be able to participate. For most private teams, `invite_link` is the best default. It requires a generated URL to join, making it simple to share yet secure and revocable. If you need an extra layer of defense, especially for automated workers running in shared environments, use `password`. This mode requires correct password hash verification in addition to the swarm ID.
+
+Passwords are stored securely using hashes, so even if policy data leaks, the raw password remains safe. Be aware that complex authentication modes like `oauth_allowlist` or `admin_approval` may be normalized at runtime based on your swarm's visibility. For example, setting `admin_approval` on a `listed` swarm usually reverts to `open` because public swarms cannot gate entry behind admin approval. Always verify your effective policy after making changes to ensure the coordinator accepted your configuration.
+
+<Recipe>
+**Enabling Password Protection**
+To add password protection to a private swarm, use the admin API. This ensures every worker must provide the password to join.
+
+```bash
+curl -X PATCH "https://onlymacs.ai/admin/v1/swarms/swarm-private/join-policy" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "join_policy": {
+      "version": 1,
+      "mode": "password"
+    },
+    "join_password": "choose-a-real-password"
+  }'
+```
+</Recipe>
+
+<Avoid>
+**Security Pitfalls**
+*   Avoid relying solely on obscurity. Sharing an `unlisted` swarm ID without an invite link or password is risky.
+*   Avoid rotating passwords without updating all worker configurations immediately, or you will break connections silently.
+*   Avoid exposing `join_password` in logs, scripts, or version control.
+</Avoid>
+
+## Context Read Policy: What Code Can Be Seen?
+
+Context read policy controls how much of your codebase a worker can inspect before acting. Since AI agents build understanding by reading files, this setting directly impacts both capability and risk. Your choice should depend on the sensitivity of your repository and the depth of analysis required.
+
+If you need tight control, use `manual_approval` (alias `manual`). In this mode, the worker must ask for permission for each file it wants to read. This is best for sensitive repos or when you want to audit every access. For recurring tasks like CI checks or reports, use `remembered_context_packs` (alias `packs`). This allows you to define reusable scopes ahead of time, such as "frontend components" or "API routes," so the agent can access them without prompting.
+
+When doing deep analysis or refactoring in a trusted environment, `full_project_folder` (alias `full-project`) enables architectural reasoning by allowing the agent to read the entire local project. Alternatively, `git_backed_checkout` (alias `git`) ensures consistency by letting the agent see only committed code via Git, ignoring uncommitted changes. This is useful when you want reviews to reflect the actual branch state rather than messy working directories. Note that public swarms force `manual_approval` regardless of your preference.
+
+<Decision>
+**Choosing a Read Mode**
+| Goal | Recommended Mode | CLI Flag |
+| :--- | :--- | :--- |
+| Audit sensitive code | `manual_approval` | `--context-read manual` |
+| Recurring specific tasks | `remembered_context_packs` | `--context-read packs` |
+| Deep refactor or docs | `full_project_folder` | `--context-read full-project` |
+| Consistent branch review | `git_backed_checkout` | `--context-read git` |
+</Decision>
+
+<Example>
+**Deep Inspection in a Trusted Environment**
+This command allows broad reading for architectural analysis but keeps output reviewable by using the inbox write mode.
+
+```bash
+onlymacs --trusted-only --context-read full-project --context-write inbox \
+  "inspect this project and explain the architecture"
+```
+</Example>
+
+<Avoid>
+**Risk Management**
+*   Avoid granting `full_project_folder` to untrusted agents, even in private swarms.
+*   Avoid assuming `packs` are isolated; they inherit permissions from the overall swarm policy.
+*   Avoid using `full` mode without reviewing what secrets or credentials might be exposed in your directory.
+</Avoid>
+
+## Context Write Policy: Where Do Changes Go?
+
+Write policy governs how a worker delivers its results. It prevents unintended overwrites and maintains human oversight by controlling where output files land. Match the mode to your confidence level in the agent and the task at hand.
+
+The safest option is `inbox`. Results are delivered to a review folder only, requiring you to manually decide whether to apply changes locally. If you are ready to test changes but not commit them, use `staged_apply` (alias `staged`). This lets the worker stage changes in the Git index, allowing you to run tests and diff the results before committing. For fully automated flows where you trust the agent completely, `direct_write` (alias `direct`) writes files immediately to disk. Still, this requires `--trusted-only` and often admin approval. Finally, `read_only` ensures no output files are created, which is useful for assessments or dry runs.
+
+Even in `direct_write` mode, additional conditions may block execution. File locks must be held, admin approval may be required via the `direct_write_requires_admin` flag, and the mode is generally only allowed in private swarms. Public swarms will override any request for direct writes back to `inbox`.
+
+<BestDefault>
+**Safe Progression Strategy**
+1.  Start with `inbox` until you understand the agent's behavior.
+2.  Move to `staged` for controlled automation where you want to test before committing.
+3.  Use `direct` only for mature, repetitive workflows in trusted environments.
+</BestDefault>
+
+<Recipe>
+**Preparing a Patch Safely**
+Use staged writes to prepare changes that you can review and tweak before committing.
+
+```bash
+onlymacs --trusted-only --context-write staged \
+  "prepare the smallest safe patch"
+```
+Changes will appear in your Git staging area. Review, tweak, or discard them freely.
+</Recipe>
+
+<Avoid>
+**Write Risks**
+*   Avoid expecting `direct_write` to work on public swarms; it will be rejected.
+*   Avoid disabling file locks unless you have absolute certainty that only one worker is editing a file.
+*   Avoid skipping review of staged changes; automation is not infallible.
+</Avoid>
+
+## Boolean Guardrails: Fine-Grained Controls
+
+Boolean guardrails act as secondary switches that add precision to your policy. They function as a dual-gate requirement: both the server policy and your CLI request must agree for an action to proceed. This reduces the blast radius if a configuration is compromised.
+
+Key flags include `allow_test_execution`, which permits running tests, and `allow_dependency_install`, which allows installing packages. There is also `require_file_locks`, enabled by default to prevent two workers from editing the same file simultaneously. The `secret_guard_enabled` flag blocks the exposure of patterns resembling API keys or tokens and is always on in public swarms. You can also limit resource usage with `max_context_request_rounds`, which caps how many times an agent can fetch new context, and `allowed_context_packs`, which restricts which predefined packs an agent can use.
+
+<BestDefault>
+**Recommended Baseline Configuration**
+```json
+{
+  "allow_test_execution": true,
+  "allow_dependency_install": false,
+  "require_file_locks": true,
+  "secret_guard_enabled": true,
+  "direct_write_requires_admin": true,
+  "max_context_request_rounds": 3,
+  "allowed_context_packs": ["review-template", "security-audit"]
+}
+```
+This setup allows testing and requires locks and approvals while limiting context rounds and restricting pack usage.
+</BestDefault>
+
+<Avoid>
+**Configuration Errors**
+*   Avoid setting `allow_dependency_install: true` in policy without also including `--allow-installs` in your CLI command. Both are required.
+*   Avoid raising `max_context_request_rounds` unnecessarily, as higher values increase the attack surface and resource usage.
+*   Avoid leaving `allowed_context_packs` unrestricted unless you fully trust all pack sources.
+</Avoid>
+
+## Public vs Private Defaults: Know What You're Getting
+
+The coordinator applies different default policies depending on your swarm's discoverability. Understanding these defaults helps you predict behavior without configuring every flag manually. Importantly, you cannot override public defaults. If your swarm is `listed`, the system resets unsafe options regardless of what you send in your configuration.
+
+Public (`listed`) swarms are designed for maximum safety. Workers must request every file manually, all outputs go to the inbox, and tests and installs are disabled by default. Only one round of context requests is allowed. This ensures that open collaboration remains secure even if the agent behaves unexpectedly.
+
+Private (`unlisted` or `hidden`) swarms balance productivity and safety. By default, workers can see the whole project, prepare changes in Git staging, and run tests if the CLI includes `--allow-tests`. Still, dependency installs remain blocked, and direct writes still require admin approval. This is the sweet spot for most teams, offering enough freedom to be useful while maintaining core protections.
+
+<Note>
+**Effective policy check:** Always check your effective policy after creation. What you requested may not be what was applied, especially if you attempted to loosen restrictions on a public swarm.
+</Note>
+
+## Ticket Gates: Real-Time Permission Checks
+
+Every task a worker performs arrives as a *ticket*. Before execution, the coordinator validates the ticket against the current policy. The coordinator performs this check per operation, not only at startup. When a worker tries to run a test, install a package, read a new file, or write output, a ticket is generated and validated independently.
+
+Validation is cumulative and strict. Two conditions must align: the swarm policy must allow the action, and the worker's request must explicitly opt in via a CLI flag. For example, to run tests, the policy must have `allow_test_execution: true` and the CLI command must include `--allow-tests`. If either side denies it, the ticket fails. This dual requirement protects you from accidental escalation even if your config drifts.
+
+<Decision>
+**Troubleshooting Failed Tickets**
+If an action is blocked, check these three points in order:
+1.  **Policy Flag:** Is the corresponding boolean flag set to `true` in the swarm policy?
+2.  **CLI Flag:** Did your command include the matching opt-in flag (e.g., `--allow-tests`)?
+3.  **Visibility:** Does the swarm visibility (`listed` vs `unlisted`) allow this mode at all?
+</Decision>
+
+<NextStep>
+Now that you understand how policies control access and behavior, you can configure your swarm for specific workflows. Next, learn how to **define and manage context packs** to streamline repeated tasks without sacrificing security.
+</NextStep>

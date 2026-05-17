@@ -1,0 +1,197 @@
+---
+title: Troubleshooting
+description: Fix common app, bridge, launcher, model, coordinator, and run issues.
+---
+# Troubleshooting
+
+When OnlyMacs behaves unexpectedly, the instinct is often to restart everything or guess at configuration files. Resist that urge. The system is designed to report its own state clearly if you ask the right questions first. Effective troubleshooting here is a structured process of elimination: verify the foundation, check the connections, inspect the active context, and finally analyze the specific failure.
+
+Start every single troubleshooting session with this command:
+
+```bash
+onlymacs check
+```
+
+This runs an internal audit of your environment. It verifies that the background bridge service is reachable, confirms that models are loaded and ready, and validates your current swarm configuration. Use it as a preflight health check. The output is plain English and usually points directly to the root cause, such as a disconnected provider or a missing launcher. If `check` reports no issues but problems persist, you can confidently move to targeted diagnostics below. Skipping this step often leads to fixing symptoms while the actual cause remains hidden.
+
+<Learn>
+**The Diagnostic Ladder**
+1. Run `onlymacs check` to rule out systemic failures.
+2. Verify bridge connectivity if CLI commands hang or refuse connection.
+3. Confirm the CLI launcher is in your PATH if the command is not found.
+4. Inspect model availability and swarm context before blaming the prompt.
+5. Use `diagnostics` and `support-bundle` only after gathering specific evidence.
+</Learn>
+
+---
+
+## Verifying Bridge Connectivity
+
+The **bridge** is the background service that acts as the gateway between your terminal and OnlyMacs' core engine. Without it, CLI commands will fail silently or return connection errors. While the CLI attempts to wake the bridge automatically, this handshake is not guaranteed under all system loads. You should ensure the bridge is actively listening before debugging higher-level logic.
+
+To verify the bridge is running, open the OnlyMacs application from your Applications folder and wait 5-10 seconds for internal services to initialize. Then, confirm connectivity with a direct HTTP request:
+
+```bash
+curl http://127.0.0.1:4318/health
+```
+
+A successful response returns an HTTP 200 status, indicating the bridge is active. If you see a timeout, "connection refused," or no response, the service is not running correctly.
+
+<BestDefault>
+**Startup Routine**: If you script workflows or rely on automation, make the `curl` health check the first step in your script. It is fast, predictable, and prevents cascading failures where subsequent commands fail because the bridge was not ready.
+</BestDefault>
+
+<Avoid>
+**Avoid restarting your computer** at the first sign of bridge failure. Most issues resolve by quitting OnlyMacs completely via the menu bar (Cmd+Q) and relaunching. Also, avoid launching multiple instances of the app; OnlyMacs does not support concurrent apps, and doing so can lock ports and prevent the CLI from connecting. Avoid manually editing port settings unless support explicitly instructs you to do so. The default port (4318) is chosen for stability.
+</Avoid>
+
+---
+
+## Resolving Command Not Found Errors
+
+If your terminal returns `command not found: onlymacs`, the CLI launcher binary is missing from your shell's PATH. This frequently occurs after fresh installations or system updates that reset permissions or symlinks. The correct fix is managed entirely within the application UI to ensure safe upgrades later.
+
+Open OnlyMacs, navigate to **Runtime > Tools** in Settings, and click "Install CLI Launcher" or "Refresh Launchers." This action creates a symlink in a standard location (typically `/usr/local/bin`) and registers it safely for future updates. After clicking the button, you **must open a new terminal window**. Existing shell sessions cache the PATH environment variable and will not see the new launcher until restarted.
+
+Verify the installation succeeded by running:
+
+```bash
+which onlymacs
+```
+
+You should see a valid path like `/usr/local/bin/onlymacs`.
+
+<Decision>
+**When to Edit PATH Manually**
+Only consider manual PATH edits if the UI button fails repeatedly or reports a permission error. In that rare case, verify:
+*   Your user account has write access to `/usr/local/bin`.
+*   Your shell configuration (e.g., `.zshrc`) does not override the PATH in a conflicting way.
+
+Let the app handle this when possible. Manual changes introduce fragility and may break during future application upgrades.
+</Decision>
+
+---
+
+## Diagnosing Missing Models
+
+Models are the AI engines that power your agents. If `onlymacs models` displays fewer entries than expected-or none at all-the issue usually lies upstream: either the provider is disconnected, or the model file has not been downloaded yet. Models are tied to specific providers, so a model from Provider A will not appear when querying under Provider B.
+
+Begin diagnosis in the application interface:
+1.  Navigate to the **Models** section.
+2.  Check which providers are listed and verify their connection status.
+3.  Locate your expected model. If it is absent, use the UI to install it.
+4.  If a provider shows as "Disconnected," re-authenticate through the settings panel.
+
+Once the app confirms the model exists, refresh the CLI view to sync the local cache:
+
+```bash
+onlymacs models
+```
+
+<Recipe>
+**Verifying a Specific Model**
+To ensure a specific model is ready for a important task, run this sequence:
+1.  `onlymacs check` (Ensure system health)
+2.  `onlymacs models | grep "model-name"` (Confirm visibility)
+3.  `onlymacs preflight model-name` (Test loading without execution)
+
+If step 2 returns nothing, avoid proceeding to step 3. Fix visibility in the UI first.
+</Recipe>
+
+<Avoid>
+**Avoid trying to route to a model that `onlymacs models` cannot see.** The CLI can only use models exposed by the app and bridge. If a model is missing, fix visibility in the app first, then run `onlymacs models` again before retrying the task.
+</Avoid>
+
+---
+
+## Managing Active Swarms
+
+A **swarm** defines the team of agents, tools, and rules governing a specific task. Only one swarm is active per session. If your commands behave unexpectedly-such as using old tools or ignoring new constraints-you are likely operating under the wrong swarm configuration.
+
+Check your current context immediately:
+
+```bash
+onlymacs swarms
+```
+
+The output clearly marks the active swarm. If it is incorrect, open the OnlyMacs app, go to **Swarms**, and select the intended configuration. Switching swarms in the app updates the global context for all *subsequent* CLI operations.
+
+<Note>
+**Terminal Session Isolation**
+Terminal sessions do **not** automatically sync with swarm changes made elsewhere. If you switch swarms in the app while keeping old terminal windows open, those shells continue using the cached configuration from when they were launched. Treat swarm switches like environment variable changes: they affect new sessions, not existing ones. To force a refresh in an existing terminal, run `onlymacs check` or open a new terminal window.
+</Note>
+
+<BestDefault>
+**Descriptive Naming**: Name your swarms descriptively (e.g., "Documentation Writer," "Code Reviewer") so mismatches are obvious at a glance. Before starting any important work, always verify the active swarm with `onlymacs swarms`.
+</BestDefault>
+
+---
+
+## Investigating Stuck Runs
+
+When a run hangs, stalls, or produces incomplete results, resist the urge to retry immediately. Re-running the same command without understanding the failure mode wastes compute resources and obscures patterns. Instead, inspect the state of the last operation.
+
+Get a high-level overview first:
+
+```bash
+onlymacs status latest
+```
+
+This tells you if the run is queued, running, failed, or completed. If the status indicates a problem, dig deeper with detailed logs:
+
+```bash
+onlymacs diagnostics latest
+```
+
+This output includes model load times, tool execution errors, network timeouts, permission denials, and resource limits. Read these logs line by line to identify the bottleneck. For example, a `timeout loading model` suggests network instability or local resource strain, while `permission denied` indicates file access or API key issues.
+
+<Example>
+**Interpreting Diagnostic Output**
+*   **Symptom**: Run hangs indefinitely.
+    *   **Check**: `onlymacs diagnostics latest`
+    *   **Finding**: `Error: Context window exceeded (tokens: 120k / limit: 100k)`
+    *   **Action**: Reduce input size or switch to a model with a larger context window. Avoid just retry.
+*   **Symptom**: Tool execution fails silently.
+    *   **Check**: `onlymacs diagnostics latest`
+    *   **Finding**: `Permission denied: /usr/local/bin/script.sh`
+    *   **Action**: Fix file permissions or adjust the tool's allowed paths in the swarm config.
+</Example>
+
+<Avoid>
+**Blind Retries**: If five attempts fail with the same error, the sixth will too unless you change a variable based on evidence. Also, avoid assuming "stuck" means frozen; some complex reasoning tasks legitimately take minutes. Use `status` to distinguish between slow progress and actual hangs before intervening.
+</Avoid>
+
+---
+
+## Generating Support Bundles
+
+If standard diagnostics do not resolve the issue, generate a **support bundle**. This command packages logs, configurations, runtime data, and environment variables into a single archive designed for engineering review. It preserves the exact state of the system at the time of failure, which is impossible to reconstruct from copy-pasted terminal snippets.
+
+Run the following to capture the most recent session:
+
+```bash
+onlymacs support-bundle latest
+```
+
+Or target a specific run ID if you are investigating a historical issue:
+
+```bash
+onlymacs support-bundle 20260426T191556Z-d9058af387
+```
+
+The command prints the full path to the generated `support-bundle.json` file inside the run directory.
+
+<Note>
+**Privacy and Contents**
+While OnlyMacs redacts known secrets, the bundle may include partial prompt text, file paths, and system information (OS version, architecture). If privacy is a concern, you can extract the archive locally to inspect its contents before sharing it with support.
+</Note>
+
+<NextStep>
+**Contacting Support**
+When reaching out for help, always attach the support bundle. Include a brief summary describing:
+1.  What you were trying to accomplish.
+2.  The specific error or unexpected behavior observed.
+3.  The troubleshooting steps you have already taken (e.g., "Ran `check`, verified bridge, switched swarms").
+
+This context allows the engineering team to reproduce the issue immediately, significantly reducing resolution time. If the bundle generation itself fails, run `onlymacs repair` to attempt a self-heal of the runtime environment before trying again.
+</NextStep>

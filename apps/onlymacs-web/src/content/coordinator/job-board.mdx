@@ -1,0 +1,159 @@
+---
+title: Coordinator Job Board Policy
+description: How ticket boards, worker claims, and policy gates fit together.
+---
+# Coordinator Job Board Policy
+
+The Coordinator Job Board turns broad development goals into safe, parallel units of work called *tickets*. Instead of asking an AI to "rewrite the entire app," you define a goal, and the system breaks it into specific tasks: analyze a file, generate documentation, run tests, or refactor a single module. The job board assigns these tickets only to workers capable of handling them while enforcing policy gates at every sensitive step.
+
+This architecture solves two fundamental problems in automated development. First, **complexity**: large, monolithic tasks fail more often and are harder to review than small, isolated ones. Second, **safety**: unchecked access to your codebase can lead to data loss, dependency bloat, or unintended behavior. By splitting work and gating actions with strict policies, OnlyMacs can make progress without raising the risk level. This page explains how to use this system effectively, when to automate versus intervene, how policies block dangerous operations, and how to avoid file conflicts during parallel edits.
+
+<Learn>
+**What to know:** The Job Board is a controlled workflow engine, not a simple queue. It breaks high-level prompts into independent "lanes" of work. Each lane operates in isolation, producing artifacts (like patches) that you review before they touch your actual codebase. Understanding the difference between *orchestration modes* (how work is split) and *policy gates* (what work is allowed) is essential for safe operation.
+</Learn>
+
+## High-Level Orchestration vs. Direct Control
+
+You generally have two ways to interact with the job board: **high-level orchestration**, where the Coordinator automatically decomposes your request and manages assignment, or **direct control**, where you manually create, claim, and execute specific jobs. For almost all development work, you should default to high-level orchestration. It reduces human error, enforces safety defaults, and scales naturally across multiple files and modules.
+
+### Use High-Level Orchestration for Real Development Work
+
+When your goal is to audit, refactor, or improve parts of your codebase, let the Coordinator handle the breakdown. The primary mechanism for this is the `--go-wide` flag (or its alias `--wide`). This tells the Coordinator to split your prompt into up to `N` parallel lanes, where each lane represents a self-contained line of work. For example, a prompt like "audit the app, CLI, coordinator, and docs" combined with `--go-wide=4` creates four logical streams. Workers pick tickets from their assigned lane based on capability, and the system manages dependencies and isolation automatically.
+
+Consider this practical workflow for a comprehensive audit:
+
+```bash
+onlymacs go wide --go-wide=4 --trusted-only --context-read git --context-write staged --allow-tests \
+  "audit the app, CLI, coordinator, and docs in separate lanes"
+```
+
+In this command, `--go-wide=4` enables parallel processing without manual setup. The `--trusted-only` flag ensures only verified workers participate, preventing unvetted code from touching your project. By setting `--context-read git`, workers see only committed files, which avoids leaking uncommitted secrets or work-in-progress logic. Finally, `--context-write staged` ensures all edits arrive as patches rather than direct writes, allowing you to review changes before they affect your files. The `--allow-tests` flag is required if any lane needs to validate code; without it, test execution would be blocked by policy.
+
+After running this, the Coordinator analyzes your prompt, creates the lanes, and assigns tickets. All file modifications are written as `.patch` files in the output directory, and you receive a summary report. You can then apply patches selectively using standard tools like `git apply`.
+
+<BestDefault>
+**Recommended Setting:** Always start with `--go-wide` (e.g., `--go-wide=4`) for complex tasks. It provides the best balance of speed and safety by isolating concerns into parallel lanes. Pair this with `--context-write staged` to ensure no changes hit your disk until you approve them.
+</BestDefault>
+
+<Avoid>
+**Common mistake:** Avoid mixing `--go-wide` with manual job commands like `onlymacs jobs claim`. The auto-generated tickets in a wide session are managed internally by the Coordinator. Attempting to claim them manually can cause race conditions, ignored work, or state corruption.
+</Avoid>
+
+### Use Direct Job Commands Only When Necessary
+
+Manual job management using subcommands like `jobs create`, `jobs claim`, and `jobs work` gives you granular control but bypasses many built-in safeguards. These commands exist primarily for testing custom worker implementations, building automated workflows in CI/CD systems, or debugging failed jobs by replaying them under controlled conditions. They are not intended for daily development tasks.
+
+Here is how a manual flow looks when you need stable job IDs for a CI pipeline:
+
+```bash
+# Create a single focused job
+onlymacs jobs create "build this landing page with go-wide coding tickets"
+
+# Assign it to workers with frontend skills, limiting concurrency
+onlymacs jobs claim job-000001 --capability frontend --max 2
+
+# Start processing with monitoring enabled
+onlymacs jobs work --watch --slots 2 --capability frontend --allow-tests
+```
+
+In this sequence, `jobs create` defines a unit of work but does not execute it. `jobs claim` reserves that job for a subset of qualified workers, and `jobs work` begins execution, pulling claimed tickets and reporting live output. Note that this approach skips automatic decomposition. If your prompt says "update login flow and refresh docs," the whole task goes to one worker unless you explicitly split it first.
+
+<Decision>
+**When to use direct commands:**
+*   **CI/CD Integration:** You need explicit job IDs to track status in an external dashboard.
+*   **Custom Daemons:** You are building a service that listens for new jobs and processes them asynchronously.
+*   **Debugging:** You need to replay a specific failed ticket in isolation.
+
+**When to avoid direct commands:**
+*   **Simple Refactors:** A one-off change like "rename variable X to Y" runs faster and safer with `onlymacs go wide --go-wide=1`.
+*   **General Development:** Let the Coordinator handle decomposition to avoid oversubscription and context errors.
+</Decision>
+
+<Recipe>
+**Preventing Oversubscription:** If you should use direct commands, always pair `--capability` with `--max`. Without `--max`, too many workers might claim the same job simultaneously, leading to duplicated effort and wasted resources.
+```bash
+onlymacs jobs claim job-000001 --capability backend --max 2
+```
+</Recipe>
+
+## How Policy Gates Stop Dangerous Actions
+
+Policies in OnlyMacs are hard gates, not suggestions. Every potentially risky action-such as running tests, installing packages, or writing files-requires approval at two distinct levels: the **Swarm Policy File** (a global configuration setting baseline permissions) and **Command-Line Flags** (explicit opt-ins passed during invocation). Both must allow the action; if either denies it, the operation fails safely.
+
+### Example: Running Tests
+
+Suppose your prompt includes "run the test suite after making changes." While this seems harmless, malicious workers could execute destructive scripts disguised as tests. To prevent this, the swarm policy must include `allow_tests: true`, AND your command must include the `--allow-tests` flag. If either is missing, the worker halts at the test stage and logs: `Action blocked: test execution not permitted by current context.`
+
+This dual-gate system applies to other important actions as well:
+
+| Action | Requires Policy Setting | Requires CLI Flag |
+| :--- | :--- | :--- |
+| Run tests | `allow_tests: true` | `--allow-tests` |
+| Install dependencies | `allow_install: true` | `--allow-installs` |
+| Write directly to files | `allow_direct_write: true` | `--context-write direct` |
+
+<BestDefault>
+**Security Posture:** Keep global swarm policies restrictive. For example, set `allow_install: false` in production environments by default. Then, enable installs only when strictly needed via command-line flags for specific sessions. This prevents accidental dependency bloat or supply chain attacks.
+</BestDefault>
+
+<Avoid>
+**Common mistake:** Avoid assuming `--allow-tests` works regardless of the swarm policy. It does not. If your team disables testing globally for security reasons, no amount of flag-toggling on the command line will override that restriction.
+</Avoid>
+
+<Note>
+**Debugging Tip:** If a job stalls unexpectedly, check the logs for messages like "permission denied." This usually indicates a mismatch between your command flags and the swarm policy, or a missing flag entirely. Always align your command flags with your prompt's intent. If you say "install React and update components," ensure both `--allow-installs` and the appropriate write mode are present and permitted.
+</Note>
+
+## Managing Concurrent Writes: Staged Output vs. Direct Edits
+
+Parallelism increases speed but introduces conflict risk. Two workers editing the same file simultaneously can overwrite each other's changes, especially if they are unaware of pending updates. OnlyMacs mitigates this through **staged output mode**.
+
+### How Staged Mode Works
+
+When you use `--context-write staged`, workers do not modify your actual files directly. Instead, they read from your current Git state (recommended with `--context-read git`) and generate changes as patch files, such as `patch-app-auth.diff`. These patches are collected in a temporary directory. You then review and apply them manually.
+
+For example, running the following command prepares independent patches for high-risk issues:
+
+```bash
+onlymacs go wide --trusted-only --context-write staged --go-wide=4 \
+  "prepare independent patches for the highest-risk launch issues"
+```
+
+Each of the four lanes produces isolated patches. Even if two workers edit `src/config.js`, their changes appear as separate diffs. You can inspect both, merge them with `git apply`, resolve conflicts in your editor, and commit only what makes sense.
+
+<BestDefault>
+**Safe Default:** Use `--context-write staged` when multiple lanes might touch shared files, when working near important code (auth, payments, config), or when collaborating with others who might push changes mid-job. The extra merge step takes seconds; recovering from lost code takes hours.
+</BestDefault>
+
+<Avoid>
+**Risk Zone:** Avoid direct write modes (`--context-write direct`) unless tasks operate in fully isolated directories (e.g., `docs/` vs `src/`) or you are automating low-risk generation like asset resizing. Even then, prefer staging if there is any doubt.
+</Avoid>
+
+<Recipe>
+**Applying Staged Changes:** After a staged run, review the outputs before applying them.
+1. List the generated patches:
+   ```bash
+   ls .onlymacs/output/*.diff
+   ```
+2. Apply the patches:
+   ```bash
+   git apply .onlymacs/output/patch-*.diff
+   ```
+3. Inspect the result with `git diff` before committing.
+</Recipe>
+
+## Summary Checklist
+
+Before submitting any job to the Coordinator, verify these conditions to prevent failures and security slips:
+
+*   **Orchestration:** Are you using `--go-wide` unless you specifically need manual control for CI or debugging?
+*   **Intent Alignment:** Have you matched your command flags to your prompt's intent (e.g., including `--allow-tests` if the prompt mentions tests)?
+*   **Conflict Safety:** Is `--context-write staged` enabled when multiple lanes could overlap on the same files?
+*   **Source Stability:** Are workers reading from a stable source like `--context-read git` to avoid seeing uncommitted noise?
+*   **Policy Compliance:** Does the swarm policy permit the actions you are attempting (tests, installs, writes)?
+
+The job board is a tool designed for predictable, auditable progress. Use automation when possible, enforce strict policies always, and treat direct file edits as the exception, not the rule.
+
+<NextStep>
+Now that you understand how to structure jobs and enforce safety, learn how to monitor their progress in [Reports And Ledgers](/docs/coordinator/reports) and how to resume longer work in [Extended Runs](/docs/cli/extended-runs).
+</NextStep>

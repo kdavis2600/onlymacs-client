@@ -1,0 +1,87 @@
+---
+title: Runtime
+description: Repair launcher, bridge, coordinator, and app connection problems.
+---
+# Runtime
+
+The **Runtime** section is the app-first repair center. Use it when Claude Code,
+Codex, or `/onlymacs` cannot reach OnlyMacs, when swarms disappear, or when the
+menu bar popup shows a stale or unhealthy state.
+
+<Learn>
+Runtime manages the background services behind OnlyMacs. You do not need to know
+the process names to fix most issues. Check the status card, use the repair or
+restart action the app recommends, then reopen Claude Code or Codex.
+</Learn>
+
+---
+
+## Normal Repair Flow
+
+Use this order:
+
+1. Open the OnlyMacs menu bar app.
+2. Go to **Runtime**.
+3. Check whether the app says ready, connecting, stale, or needs repair.
+4. Use the recommended repair or restart action.
+5. Refresh launchers if the app says they are stale.
+6. Reopen Claude Code or Codex.
+7. Try `/onlymacs check` inside the assistant if you want a text diagnosis.
+
+<BestDefault>
+If OnlyMacs was just installed, updated, or repaired, reopen your assistant
+before debugging further. The app may be healthy while the assistant is still
+using an old launcher environment.
+</BestDefault>
+
+---
+
+## What The Runtime View Tells You
+
+| Runtime signal | What it usually means | What to do |
+| :--- | :--- | :--- |
+| Ready | Local services are available | Return to Claude Code or Codex |
+| Connecting | Network, coordinator, or startup is still settling | Wait briefly, then use repair if it stays stuck |
+| Launcher stale | Claude Code, Codex, or Terminal may call an old helper | Refresh launchers and reopen the assistant |
+| Bridge down | Local request handling is unavailable | Use the app's restart or repair action |
+| Coordinator unreachable | Swarm coordination is unavailable | Check network, selected coordinator, or hosted service status |
+
+Avoid editing runtime files by hand. The app repair controls preserve logs and
+apply the same recovery path every time.
+
+---
+
+## Hosted And Local Coordination
+
+Most users should leave the default coordinator setting alone. Only change it
+when you are joining a specific private/team setup or intentionally running a
+local-only advanced environment.
+
+If you switch coordinator mode, verify it in the app and then try a small
+assistant request:
+
+```text
+/onlymacs "brainstorm three launch taglines for a Mac AI assistant"
+```
+
+For strict local work, use:
+
+```text
+/onlymacs go local-first "draft a local-only checklist for reviewing secrets"
+```
+
+---
+
+## Support Evidence
+
+If repair does not fix the issue, export a support bundle from the app. Support
+bundles preserve useful runtime and activity context without asking you to paste
+raw terminal logs.
+
+Review support bundles before sending them. They redact known secrets, but can
+still include paths, machine names, and system details.
+
+<NextStep>
+Next, open [Activity](/docs/mac-app/activity) to inspect the latest request, or
+use [Claude Code And Codex](/docs/assistants) for assistant-side checks.
+</NextStep>

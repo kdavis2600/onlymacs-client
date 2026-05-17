@@ -1,0 +1,135 @@
+---
+title: Extended Runs
+description: Run longer jobs with planning, checkpoints, repair, resume, diagnostics, and support bundles.
+---
+# Extended Runs
+
+Extended runs are designed for work that cannot fit into a single conversation or command. When you are auditing configuration files, refactoring across multiple modules, or generating comprehensive reports, the process often outlasts a single terminal session. You might close your laptop, lose network connectivity, or simply need to step away. A standard chat interaction terminates when the connection breaks; an extended run persists.
+
+An extended run is a long-running task with built-in checkpoints. If a failure occurs halfway through, the system does not force you to start over. Instead, it records what was completed, validates intermediate results, and allows you to inspect, pause, resume, or debug the specific point of failure. This statefulness is the core difference: regular commands are ephemeral, while extended runs are resilient.
+
+<Learn>
+**What to know:** An extended run maintains a persistent state file on disk, logs structured diagnostics, and manages its own lifecycle independent of your terminal window. Use this mode when a task involves multiple dependent steps (read -> analyze -> fix -> test -> summarize) or when working on important systems where accidental changes are costly. The system treats the job as a transaction that must either complete successfully or stop safely without corrupting your workspace.
+</Learn>
+
+## Choosing the Right Execution Mode
+
+Not all long jobs require the same level of autonomy. OnlyMacs provides three distinct modes to match your need for control versus unattended execution. Selecting the wrong mode can lead to wasted time waiting for input you aren't there to give, or conversely, allowing a system to make decisions you intended to review.
+
+<Decision>
+| If your goal is... | Choose this mode | Why? |
+| :--- | :--- | :--- |
+| **Supervised multi-step work** where you want to approve changes as they happen. | `--extended` | Keeps context alive across steps but pauses for confirmation on irreversible actions. |
+| **Unattended, durable work** like overnight testing or report generation. | `--overnight` | Optimized for resilience; retries transient errors and writes checkpoints frequently without needing you present. |
+| **Strict, predefined sequences** where deviation is unacceptable (e.g., compliance audits). | `--plan` | Executes a verbatim list of instructions; stops immediately if conditions change or a step becomes unsafe. |
+</Decision>
+
+### Supervised Multi-Step Tasks (`--extended`)
+
+Use `--extended` when you are guiding a complex process but need the system to remember previous steps. This is ideal for workflows like updating dependencies, staging changes, and writing a summary in one logical flow. The system acts as a careful assistant: it chains actions together but will not execute irreversible operations without your explicit confirmation unless configured otherwise.
+
+The safest default for this mode combines supervision with strict boundaries. You should pair `--extended` with `--trusted-only` to block unverified code execution. Additionally, define your scope using `--context-read` and `--context-write`. For instance, restricting reads to Git-tracked files and writes to the staging area prevents the agent from modifying unrelated parts of your project.
+
+<BestDefault>
+```bash
+onlymacs --extended --trusted-only --context-read git --context-write staged \
+  "audit settings, fix the smallest issue, and explain the patch"
+```
+This configuration ensures the system cannot accidentally modify files outside version control or execute arbitrary scripts, providing a safe sandbox for supervised automation.
+</BestDefault>
+
+<Avoid>
+Avoid using `--extended` for fully automated nightly jobs. This mode expects a level of human oversight and may pause indefinitely waiting for input. If you are not present to approve a step, the job will stall rather than proceed or fail cleanly.
+</Avoid>
+
+### Unattended Durable Work (`--overnight`)
+
+The `--overnight` mode is engineered for scenarios where you hand off a complex job and disconnect. Examples include running full test suites, generating documentation, or analyzing security posture while you sleep. This mode prioritizes resilience: if a network call fails or a subprocess crashes, the system attempts reasonable retries and logs the incident rather than aborting immediately. Outputs are written incrementally, and checkpoints are saved frequently to minimize data loss during interruptions.
+
+You should only enable this mode if you trust the initial plan enough to let the system handle minor errors autonomously. It is best practice to test similar workflows in `--extended` mode first to identify potential logic flaws before letting them run unattended. Because these jobs may involve spinning up containers or databases, you should explicitly permit such actions with flags like `--allow-tests`.
+
+<Recipe>
+```bash
+onlymacs --overnight --trusted-only --allow-tests \
+  "run a full release readiness pass and prepare a morning report"
+```
+The `--allow-tests` flag is important here; without it, the system would block any attempt to run test suites that require external resources, causing the overnight job to fail prematurely.
+</Recipe>
+
+<Avoid>
+Avoid using `--overnight` without `--trusted-only` unless you fully understand the risks. Unsupervised execution of unverified code can lead to data corruption or unintended side effects that you won't discover until morning.
+</Avoid>
+
+### Strict Predefined Sequences (`--plan`)
+
+When you know exactly what steps must happen and in what order, a plan file provides the highest level of control. By using `--plan:file.md`, you load a sequence of instructions the system must follow verbatim. This is the safest option for production deployments, compliance audits, or any workflow where improvisation could cause harm. The system validates each step against the plan. If conditions change, such as a missing file or a failing test, it stops instead of trying to improvise.
+
+Store your plan files in version control alongside your code, treating them like deployment scripts that are reviewed, tested, and traceable. Avoid vague instructions like "do everything needed to deploy," as ambiguity forces the system to guess, defeating the purpose of strict sequencing.
+
+<Example>
+Create a file named `plans/release.md`:
+```markdown
+1. Check out release branch
+2. Run linter and type checker
+3. Build binary artifacts
+4. Sign binaries using GPG
+5. Upload to secure bucket
+6. Tag commit and push
+```
+
+Execute it with:
+```bash
+onlymacs --plan:plans/release.md --trusted-only --allow-tests \
+  "execute this plan and stop if a step becomes unsafe"
+```
+If step 3 fails because the build environment is missing a dependency, the run halts. No attempt is made to install packages or alter the environment unless explicitly allowed in the plan or flags.
+</Example>
+
+## Monitoring and Controlling Active Runs
+
+Once an extended run starts, it continues in the background. You do not need to keep a terminal window open or tied to the process, but you still need visibility into its progress and the ability to control it without causing corruption.
+
+To monitor progress without blocking your main terminal, open a second session or split pane and use the `watch` command. Running `onlymacs watch current` streams logs, displays progress percentages, and highlights decision points, such as waiting for approval before modifying firewall rules. If you are managing multiple historical runs, you can target a specific one using `onlymacs watch <run-id>`. If you are unsure which run to inspect, start with `onlymacs status latest`, `onlymacs queue`, or `onlymacs inbox latest` to identify active sessions.
+
+There will be times when you need to free up CPU or memory, perhaps for a video call or urgent debugging. Avoid killing the run. Instead, pause it cleanly using `onlymacs pause current`. This instructs the system to finish its current atomic operation, such as completing a file write, and then suspend. All state, including temporary files, logs, and progress markers, is preserved. Later, you can resume exactly where it left off with `onlymacs resume current`, ensuring no duplicate work and no lost context.
+
+<Avoid>
+**Avoid pressing Ctrl+C** on an extended run. Abrupt termination can leave partial changes, corrupt lockfiles, or create inconsistent workspace states. Always use the `pause` command to ensure a graceful suspension. Make it a habit to pause runs before putting your machine to sleep or switching networks.
+</Avoid>
+
+## Recovery and Diagnostics
+
+Even well-planned runs can fail due to network drops, permission issues, or unexpected file changes. How you respond to these failures determines whether you waste hours troubleshooting or recover quickly. The key is to diagnose the root cause before attempting to resume.
+
+First, identify exactly which run stopped. Avoid assuming it is the most recent one. Use explicit targeting with `onlymacs resume-run latest` for the most recent job, or specify a known ID like `onlymacs resume-run rm12x9a`. You can also target archived runs via their inbox path, for example, `onlymacs resume-run ./inbox/crashed-release-run`. Still, avoid resuming blindly.
+
+Before resuming, always run diagnostics to understand why the run stopped. Jumping straight to `resume` without this step is risky; you might repeat a failed step if the underlying issue (like expired credentials) remains unresolved. Run `onlymacs diagnostics latest` to output the final state of the workspace, the last few actions attempted, any error messages, and whether the stop was graceful or forced.
+
+<Example>
+Running diagnostics might produce output like this:
+```text
+[ERROR] Failed to upload artifact: 403 Forbidden (check AWS credentials)
+Last completed step: build-binary
+Next planned step: upload-artifact
+Run stopped by safety monitor: yes
+```
+In this case, the diagnostic clearly indicates that AWS credentials have expired. You now know to refresh your credentials before attempting to resume, preventing an immediate repeat of the failure.
+</Example>
+
+If diagnostics do not resolve the issue or you need team input, create a support bundle using `onlymacs support-bundle latest`. This command writes a redacted `support-bundle.json` for the run, including events, status metadata, plan summary, and provider health details. It gives support enough context to diagnose the failure without asking you to paste raw terminal logs into a ticket.
+
+<Note>
+Secrets are filtered out automatically in support bundles. Avoid manually copying and pasting raw logs into public channels or tickets, as they may contain sensitive tokens or paths.
+</Note>
+
+## Best Practices for Extended Workflows
+
+Extended runs provide significant power but introduce complexity. To stay safe and efficient, treat these runs like CI pipelines: they are not fire-and-forget processes but stateful, inspectable workflows that require planning and care.
+
+Always use `--trusted-only` to prevent the execution of unverified code, especially in `--overnight` or automated contexts. Define clear context boundaries using `--context-read` and `--context-write` to limit the agent's access to only the relevant parts of your project. Before deploying an `--overnight` job, test the workflow in `--extended` mode under supervision to catch logic flaws early.
+
+Maintain visibility by running `watch` in a split pane, keeping you informed without blocking your shell. When you need to interrupt a run, always `pause` instead of killing the process to preserve state and avoid corruption. Finally, make `diagnostics` a mandatory part of your failure checklist; skipping this step often leads to repeated failures because the root cause was not addressed.
+
+<NextStep>
+Now that you understand how to manage long-running tasks, continue with [Route Presets](/docs/cli/routes) to choose the right model alias and [Job Board](/docs/cli/job-board) to understand wide worker loops.
+</NextStep>

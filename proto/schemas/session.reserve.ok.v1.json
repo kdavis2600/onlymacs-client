@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "session.reserve.ok.v1",
+  "type": "object",
+  "required": ["session_id", "status", "resolved_model", "provider"],
+  "properties": {
+    "session_id": { "type": "string" },
+    "status": { "type": "string" },
+    "resolved_model": { "type": "string" },
+    "provider": {
+      "type": "object",
+      "required": ["id", "name", "status", "active_sessions", "matching_models", "slots"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "status": { "type": "string" },
+        "active_sessions": { "type": "integer", "minimum": 0 },
+        "matching_models": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "slots_free", "slots_total"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "slots_free": { "type": "integer", "minimum": 0 },
+              "slots_total": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "slots": {
+          "type": "object",
+          "required": ["free", "total"],
+          "properties": {
+            "free": { "type": "integer", "minimum": 0 },
+            "total": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    }
+  }
+}

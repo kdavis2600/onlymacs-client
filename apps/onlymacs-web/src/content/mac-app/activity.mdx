@@ -1,0 +1,59 @@
+---
+title: Activity
+description: Review recent OnlyMacs requests from the app.
+---
+# Activity
+
+Activity is the app view for understanding what happened after a `/onlymacs`
+request. Use it before digging into logs or terminal output.
+
+<Learn>
+Activity should answer: what was requested, which route was used, whether it
+finished, and where the result went.
+</Learn>
+
+---
+
+## What To Check
+
+| Field | Why it matters |
+| :--- | :--- |
+| Latest request | Confirms Claude Code or Codex reached OnlyMacs |
+| Route | Shows local-first, trusted-only, or remote-first intent |
+| Status | Shows running, completed, failed, waiting, or blocked |
+| Result location | Points to an answer, inbox item, or proposed change |
+| Warnings | Explains missing workers, policy blocks, or stale runtime state |
+
+If the latest request is missing, reopen Claude Code or Codex and try
+`/onlymacs check`. If it appears but failed, open Runtime or Current Swarm based
+on the warning.
+
+---
+
+## Common Outcomes
+
+| Activity state | First action |
+| :--- | :--- |
+| Waiting for trusted workers | Check Current Swarm and wake the trusted Mac |
+| Runtime unavailable | Open Runtime and use repair |
+| Public swarm unavailable | Check Current Swarm freshness and hosted coordinator state |
+| File approval needed | Review the app prompt before sharing context |
+| Result ready | Read the answer or review the proposed change before applying |
+
+<Avoid>
+Avoid assuming silence means success. Check Activity when a run feels slow,
+returns an incomplete answer, or appears to vanish from the assistant.
+</Avoid>
+
+---
+
+## Support Evidence
+
+If support needs details, export a support bundle from the app while the failed
+request is still recent. This preserves the relevant Activity and Runtime state.
+
+<NextStep>
+Next, open [Runtime](/docs/mac-app/runtime) for repair actions or
+[Current Swarm](/docs/mac-app/current-swarm) if a worker or public swarm is
+missing.
+</NextStep>

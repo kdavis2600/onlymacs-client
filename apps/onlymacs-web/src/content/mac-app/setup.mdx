@@ -1,0 +1,55 @@
+---
+title: Guided Setup
+description: Set up OnlyMacs from the app without hand-editing shell files.
+---
+# Guided Setup
+
+Guided Setup is the app path for getting OnlyMacs ready on a new Mac. It checks
+permissions, launchers, runtime state, models, and swarm membership without
+asking you to hand-edit terminal configuration.
+
+<Learn>
+Use Guided Setup after a clean install, an app update, a launcher repair, or when
+Claude Code or Codex cannot see `/onlymacs`.
+</Learn>
+
+---
+
+## Setup Checklist
+
+1. Open OnlyMacs from Applications or Spotlight.
+2. Approve any macOS permission prompts.
+3. Open **Tools** and refresh Claude Code or Codex launchers.
+4. Reopen Claude Code or Codex.
+5. Open **Runtime** and confirm the app is ready.
+6. Open **Current Swarm** and confirm the expected swarm.
+7. Try `/onlymacs check` inside the assistant.
+
+If any step fails, use the repair action shown in the app before continuing.
+
+---
+
+## First Request
+
+Start with a prompt that does not need private files:
+
+```text
+/onlymacs "brainstorm three launch taglines for a Mac AI assistant"
+```
+
+Then try a local-only route:
+
+```text
+/onlymacs go local-first "draft a local-only checklist for reviewing secrets"
+```
+
+<Avoid>
+Avoid copying app-bundle paths, editing shell profile files, or force-quitting
+background services while setting up. The app has supported repair controls for
+those cases.
+</Avoid>
+
+<NextStep>
+Next, use [Tools](/docs/mac-app/tools) for launcher setup or
+[Quickstart](/docs/quickstart) for the first full workflow.
+</NextStep>

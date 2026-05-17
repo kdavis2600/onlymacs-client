@@ -1,0 +1,54 @@
+---
+title: Models
+description: See and prepare the models OnlyMacs can use.
+---
+# Models
+
+The Models view shows which local or swarm models are available. You do not need
+to memorize model IDs for everyday use. Start with the route and let OnlyMacs
+select a useful model when possible.
+
+<Learn>
+Models affect capacity and quality. Routes affect trust. For sensitive work,
+choose the safe route first, then worry about model strength.
+</Learn>
+
+---
+
+## What To Check
+
+| Model state | Meaning |
+| :--- | :--- |
+| Ready or loaded | Available for matching requests |
+| Downloading | Wait before using local-heavy routes |
+| Missing | Install from the app or use another route |
+| Error | Use app repair or retry the download |
+
+If a trusted worker is expected to help, check Models and Runtime on that worker
+Mac too.
+
+---
+
+## Model Choice In Practice
+
+Use simple route prompts from Claude Code or Codex:
+
+```text
+/onlymacs go local-first "summarize this private note"
+```
+
+```text
+/onlymacs go trusted-only "review my current diff"
+```
+
+```text
+/onlymacs go remote-first "draft 10 public launch headlines for a Mac AI assistant"
+```
+
+OnlyMacs can choose from eligible models under the route and policy. If a request
+fails due to missing capacity, check Models and Current Swarm in the app.
+
+<NextStep>
+Next, read [Sharing](/docs/mac-app/sharing) to decide when this Mac should offer
+model capacity to others.
+</NextStep>

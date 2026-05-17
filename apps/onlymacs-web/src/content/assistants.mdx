@@ -1,0 +1,94 @@
+---
+title: Claude Code And Codex
+description: Use OnlyMacs from Claude Code or Codex without starting in Terminal.
+---
+# Claude Code And Codex
+
+Most people should start from the app and their AI assistant, not a terminal.
+OnlyMacs installs a launcher that Claude Code and Codex can call with the
+`/onlymacs` command. The menu bar app keeps the runtime healthy, shows which
+swarm you are connected to, and gives you repair and support actions when
+something looks wrong.
+
+<BestDefault>
+Open the OnlyMacs menu bar app first. Confirm the status looks ready, then open
+Claude Code or Codex in the project you want to work on and use `/onlymacs` in
+the assistant conversation.
+</BestDefault>
+
+---
+
+## Your First Assistant Request
+
+Use the plain prompt form first:
+
+```text
+/onlymacs "brainstorm three launch taglines for a Mac AI assistant"
+```
+
+That verifies the assistant can reach OnlyMacs without asking it to read private
+files or edit anything. For private work, use one route word:
+
+```text
+/onlymacs go local-first "draft a local-only checklist for reviewing secrets"
+```
+
+For a private coding review on your own approved Macs, use:
+
+```text
+/onlymacs go trusted-only "review my current diff"
+```
+
+For public-safe copy or batch text, use:
+
+```text
+/onlymacs go remote-first "draft 10 public launch headlines for a Mac AI assistant"
+```
+
+These are assistant prompts. You type them inside Claude Code or Codex, and
+OnlyMacs handles the launcher, route selection, approvals, and result handoff.
+
+---
+
+## Check The App Before Debugging
+
+If a request fails or the public swarm does not appear, start in the OnlyMacs
+menu bar app:
+
+1. Open the OnlyMacs icon in the menu bar.
+2. Check **Current Swarm** for the active swarm and connection state.
+3. Check **Runtime** for ready, connecting, or repair states.
+4. Check **Activity** for the latest `/onlymacs` request.
+5. Use the app's restart, repair, or export support bundle action if prompted.
+
+Reopen Claude Code or Codex after repairing launchers or changing runtime state.
+Assistants can keep an old shell environment alive, so reopening them is often
+the fix when `/onlymacs` was just installed or refreshed.
+
+<Avoid>
+Avoid switching a private request to the public swarm just because a worker is
+missing. If the task involves private code, customer data, unreleased plans, or
+local secrets, keep it local-first or trusted-only and fix the app connection
+instead.
+</Avoid>
+
+---
+
+## When Terminal Commands Help
+
+The terminal is still useful for developers, logs, scripts, and support
+sessions, but it should not be the first thing a non-technical user has to learn.
+If support asks for a text diagnosis, run the same check from the assistant:
+
+```text
+/onlymacs check
+```
+
+If support specifically asks for command-line output, use the CLI reference.
+Otherwise, prefer the app's Runtime, Activity, Swarms, and support bundle
+controls.
+
+<NextStep>
+Next, follow the [Quickstart](/docs/quickstart) for the app-first setup flow, or
+open [The App](/docs/mac-app) to learn what each menu bar section means.
+</NextStep>

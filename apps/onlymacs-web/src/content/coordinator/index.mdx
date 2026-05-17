@@ -1,0 +1,96 @@
+---
+title: Coordinator Overview
+description: Understand the coordinator without needing to operate it by hand.
+---
+# Coordinator Overview
+
+The coordinator is the central nervous system of your OnlyMacs swarm. It does not execute your code; instead, it manages membership, routes work to available machines, and enforces security policies. You rarely interact with the coordinator directly. The OnlyMacs CLI and your local bridge handle that communication for you. Still, when a job hangs, a worker disappears, or access is denied, understanding the coordinator's role is the difference between guessing and solving the problem efficiently.
+
+This page explains how the coordinator orchestrates your workflow, how to verify its state, and how to choose the right deployment mode for your needs. We will move from the abstract data flow to concrete debugging steps, ensuring you know exactly where to look when things stop moving.
+
+<Learn>
+**What to know:** The coordinator is a stateful registry and router. It maintains a real-time list of trusted workers and matches incoming tasks to machines that meet specific criteria (OS version, architecture, permissions). If the coordinator cannot see a worker, no amount of retrying on the client side will make that worker available.
+</Learn>
+
+## How the Local Workflow Operates
+
+Every command you run follows a strict, secure path from your terminal to a remote Mac and back. Visualizing this path helps you isolate failures immediately rather than assuming the network is "just slow."
+
+When you run a command like `onlymacs go trusted-only "run the test suite"`, the CLI does not contact a worker directly. Instead, it sends the request to the **local bridge**, a background process running on your machine. The bridge forwards this intent securely to the **coordinator**. The coordinator then checks its registry: Is there a worker available? Does it match your requirements? Is it online? If a match exists, the coordinator assigns the task. The worker executes the job, streams logs back through the coordinator, and the coordinator relays the final result to your bridge, which delivers it to your terminal, inbox, or as a staged patch.
+
+<BestDefault>
+**Normal Execution:** In a healthy system, output appears within seconds of running a command. Running `onlymacs status` should show an active task briefly before transitioning to completion.
+</BestDefault>
+
+<Avoid>
+**Common mistake:** Avoid assuming the CLI talks directly to workers. All traffic flows through the bridge and coordinator. Restarting a worker without checking if the coordinator can see it is usually wasted effort. If the bridge is down, no commands will succeed regardless of the coordinator's health.
+</Avoid>
+
+When troubleshooting, always start at your end. Confirm the bridge is alive using `onlymacs runtime`. Then, check whether the coordinator sees any workers using `onlymacs swarms`. Only after validating these two layers should you investigate individual machines or network configurations.
+
+## Inspecting Coordinator State
+
+You cannot fix what you cannot see. OnlyMacs provides read-only visibility into the coordinator's current view of the world. These commands are your primary diagnostic tools when behavior seems unexpected.
+
+Start with `onlymacs runtime` to confirm your local environment is ready. You want to see "bridge: active" and a valid URL if you are in hosted mode. If the bridge is inactive, the problem is local, and no remote work can proceed. Next, run `onlymacs swarms` to list all visible workers and their status. A healthy output shows machines with an `online` status, correct tags, and non-zero slots. An empty list or stale timestamps (older than two minutes) indicate a registration or connectivity issue. Finally, use `onlymacs status` to summarize active jobs and connections. This reveals stuck jobs, repeated disconnects, or unknown workers that might be clogging the queue.
+
+<Recipe>
+**Diagnostic Sequence**
+Run these commands in order when debugging a silent failure:
+
+```bash
+onlymacs runtime     # Am I connected to the right coordinator?
+onlymacs swarms      # Are my expected machines visible?
+onlymacs status      # Are jobs flowing normally?
+```
+</Recipe>
+
+Consider a scenario where you send a request and get no response. First, `onlymacs runtime` reports `bridge: inactive`. This tells you the problem is local; you need to open the app Runtime screen to repair the bridge or run `onlymacs repair`. Once the bridge is active, you run `onlymacs swarms` and get an empty list. This means the coordinator sees no workers. Logging into one of your Macs and running `onlymacs runtime` there reveals it is in `embedded` mode, while your laptop expects `hosted`. They are in separate worlds. The fix is to reconfigure both machines to use the same hosted coordinator URL.
+
+<BestDefault>
+Make `onlymacs swarms` part of your preflight checklist before launching important jobs. Treat an empty swarms list as a hard stop-avoid proceeding until resolved. Use `onlymacs status` to monitor progress during long-running workflows.
+</BestDefault>
+
+<Avoid>
+Avoid assuming workers register automatically on boot; ensure the bridge starts with login. Avoid relying on DNS names unless they resolve consistently across all team machines. Avoid skipping verifying coordinator alignment between team members early in setup. Visibility comes before action.
+</Avoid>
+
+## Hosted vs. Embedded Coordination
+
+The coordinator runs in one of two modes: **hosted** or **embedded**. This choice determines whether your swarm is shared across a team or isolated to a single machine. Understanding this distinction is important because machines in one mode cannot see or accept work from the other.
+
+In **hosted mode**, a single coordinator serves multiple users and machines. Everyone points their bridges to the same URL, enabling collaboration, centralized policy enforcement, and shared worker capacity. This is the required mode for team projects and CI integration. In **embedded mode**, each user runs their own coordinator locally. Machines only talk to others on the same machine or network segment. There is no sharing across developers. This mode is suitable for solo development or personal automation where simplicity and zero external dependencies are priorities.
+
+<Decision>
+**Choosing a Mode**
+
+| Scenario | Recommended Mode | Reasoning |
+| :--- | :--- | :--- |
+| Solo development, personal automation | **Embedded** | Simpler setup, no external dependencies, self-contained. |
+| Team project, CI integration | **Hosted** | Ensures consistent access, shared workers, unified logs. |
+| Testing new configurations | **Embedded** | Safe sandbox; changes don't affect teammates. |
+| Onboarding a new developer | **Hosted** | Must align with team infrastructure from day one. |
+
+</Decision>
+
+Configuring hosted mode requires setting the coordinator URL once in the OnlyMacs app settings. All future commands use that endpoint. You can verify this by running `onlymacs runtime` and looking for `mode: hosted` along with your team's URL. Embedded mode requires no configuration; the coordinator starts automatically when the bridge launches, showing `mode: embedded` and a local URL.
+
+Be aware that restarting your machine kills the embedded coordinator temporarily. Jobs may fail until the bridge restarts and the coordinator spins up again. A common mistake occurs when Developer A uses hosted mode and Developer B forgets to configure it, staying in embedded mode. Both think they have joined the same swarm, but `onlymacs swarms` shows nothing for either. Comparing `onlymacs runtime` outputs reveals the mismatch. For teams, standardize on hosted mode early, document the correct URL, and verify it during onboarding to avoid fragmented swarms.
+
+<BestDefault>
+For individuals, **embedded** is fine. For teams, **hosted** is the clearer default because every Mac points at the same coordinator URL. Choose a stable URL early, save it through the app settings, and verify it during onboarding with `onlymacs runtime`.
+</BestDefault>
+
+## Defining Behavior with Policies
+
+The coordinator enforces rules, but only the ones you define. Without explicit policies, no machine can join a swarm, and no task can access files beyond minimal defaults. If a worker gets rejected or a file operation fails, the issue is likely policy-related, not a network or authentication error.
+
+Policies answer specific questions: Can this swarm run tests? Can workers install dependencies? Should outputs go to the inbox, staged changes, or direct writes? Which read mode is allowed for this project? These rules are managed through the coordinator's swarm policy APIs and the app surfaces that sit on top of them. Use the policy pages when you need to understand the exact JSON fields, aliases, and defaults.
+
+For example, a private swarm might use `git_backed_checkout` for reads, `staged_apply` for writes, `allow_test_execution: true`, and `allow_dependency_install: false`. That combination lets workers inspect the branch, prepare reviewable patches, and run tests when the CLI also includes `--allow-tests`, while still blocking dependency installs unless both policy and command explicitly permit them.
+
+To get started, run `onlymacs swarms` to identify your target swarm, then review its effective context policy in the coordinator or app UI. Test with a low-risk command and monitor `onlymacs status` and `onlymacs diagnostics latest` for denials. Avoid assuming a CLI flag overrides policy. The coordinator is deliberately strict: if the policy and the command do not both allow an action, the action is blocked.
+
+<NextStep>
+Now that you understand how the coordinator routes work and enforces rules, learn how to define the specific conditions that allow machines to join and tasks to execute. Proceed to [Policy Options](/docs/coordinator/policies) to master syntax, test conditions, and avoid overly permissive defaults.
+</NextStep>

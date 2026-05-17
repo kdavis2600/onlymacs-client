@@ -1,0 +1,125 @@
+---
+title: How To Use
+description: Pasteable Claude Code and Codex recipes for common OnlyMacs requests.
+---
+# How To Use
+
+Use these prompts inside Claude Code or Codex. Keep the OnlyMacs menu bar app
+open while you work so you can check Runtime, Current Swarm, and Activity.
+
+<Learn>
+Start with the route and the job. Add more detail only when the task needs it.
+Most users do not need to learn every CLI flag before OnlyMacs becomes useful.
+</Learn>
+
+---
+
+## Quick Checks
+
+Use this when you just want to know whether OnlyMacs is reachable:
+
+```text
+/onlymacs check
+```
+
+Use this for a safe prompt-only request:
+
+```text
+/onlymacs "brainstorm three launch taglines for a Mac AI assistant"
+```
+
+---
+
+## Private Local Review
+
+Use local-first for sensitive material:
+
+```text
+/onlymacs go local-first "review this pasted configuration checklist for privacy risks"
+```
+
+Good fits:
+
+| Use it for | Why |
+| :--- | :--- |
+| Secrets and configs | Keeps work on This Mac |
+| Local logs | Avoids sending operational details away |
+| Private notes | Keeps personal context local |
+| First smoke tests | Small and easy to verify |
+
+---
+
+## Trusted Mac Review
+
+Use trusted-only when your private work can run on Macs you own or manage:
+
+```text
+/onlymacs go trusted-only "review my current diff"
+```
+
+Good fits:
+
+| Use it for | Why |
+| :--- | :--- |
+| Private repo review | Uses approved Macs only |
+| Large docs pass | Offloads slow reading from your laptop |
+| Test planning | Produces a reviewable plan before changes |
+| Migration review | Keeps work inside trusted hardware |
+
+If trusted Macs are not visible, check **Current Swarm** and **Runtime** in the
+app before trying another route.
+
+---
+
+## Public-Safe Remote Work
+
+Use remote-first only for input you are comfortable sharing outside your trusted
+devices:
+
+```text
+/onlymacs go remote-first "draft 10 public launch headlines for a Mac AI assistant"
+```
+
+Good fits:
+
+| Use it for | Avoid it for |
+| :--- | :--- |
+| Public marketing copy | Private repositories |
+| Public docs | Customer data |
+| Open-source snippets | Stack traces with internal URLs |
+| Sanitized examples | Secrets, configs, unreleased plans |
+
+---
+
+## Bigger Work
+
+For larger private work, start with a planning prompt that has enough context:
+
+```text
+/onlymacs go trusted-only "review this project and suggest which tasks should be split across worker Macs"
+```
+
+That is clearer than asking for a fixed number of agents without giving OnlyMacs
+the project context or a concrete migration plan.
+
+<Avoid>
+Avoid prompts like "use 8 agents and fix everything" while you are learning. Ask
+for a reviewable plan first, then run the narrowest useful follow-up.
+</Avoid>
+
+---
+
+## Review The Result
+
+Check **Activity** in the app after a request. If the result includes proposed
+code changes, review the diff in your normal developer tool before committing.
+If the result is a report, read it like a draft and decide what to use.
+
+When support needs evidence, export a support bundle from the app instead of
+pasting raw terminal logs.
+
+<NextStep>
+Next, read [Choose a Route](/docs/routes) if you are unsure which trust boundary
+to use, or [Menu Bar](/docs/mac-app/menu-bar) if you want the app status
+checklist.
+</NextStep>

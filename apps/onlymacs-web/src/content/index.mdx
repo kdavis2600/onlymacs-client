@@ -1,0 +1,114 @@
+---
+title: OnlyMacs Docs
+description: Friendly docs for using OnlyMacs from the Mac app, Claude Code, Codex, and trusted swarms.
+---
+# OnlyMacs Docs
+
+OnlyMacs turns the Macs you already use into shared AI capacity. Your main
+workflow is simple: keep the menu bar app running, ask Claude Code or Codex with
+`/onlymacs`, and review the result before applying it.
+
+You do not need to start in Terminal. The command-line tools exist for
+developers, automation, and support, but the app and assistant integrations are
+the default path for everyday users.
+
+<Learn>
+OnlyMacs is built around three practical choices:
+
+The **app state** tells you whether the runtime, models, and swarms are ready.
+
+The **assistant request** is what you type in Claude Code or Codex with
+`/onlymacs`.
+
+The **route** decides where the work may run: This Mac, trusted Macs, or a
+public-safe remote route.
+</Learn>
+
+---
+
+## Start Here
+
+| Goal | Open this |
+| :--- | :--- |
+| Install and make your first request | [Quickstart](/docs/quickstart) |
+| Use OnlyMacs from Claude Code or Codex | [Claude Code And Codex](/docs/assistants) |
+| Check runtime, swarms, sharing, models, and activity | [The App](/docs/mac-app) |
+| Decide whether work should be local, trusted, or public-safe | [Choose a Route](/docs/routes) |
+| Use terminal commands, flags, scripts, or advanced diagnostics | [CLI Reference](/docs/cli) |
+
+<BestDefault>
+For your first session, open the OnlyMacs menu bar app, confirm the runtime looks
+ready, then type a simple `/onlymacs` prompt inside Claude Code or Codex.
+</BestDefault>
+
+---
+
+## The Everyday Workflow
+
+1. Open the OnlyMacs app and leave it in the menu bar.
+2. Check **Current Swarm** and **Runtime** if anything looks offline.
+3. Open Claude Code or Codex in the project or folder you care about.
+4. Type a simple `/onlymacs` prompt.
+5. Review the answer, inbox result, or proposed code changes before using them.
+
+Use the plain prompt form first:
+
+```text
+/onlymacs "brainstorm three launch taglines for a Mac AI assistant"
+```
+
+Use route words only when the trust boundary matters:
+
+```text
+/onlymacs go local-first "draft a local-only checklist for reviewing secrets"
+```
+
+```text
+/onlymacs go trusted-only "review my current diff"
+```
+
+```text
+/onlymacs go remote-first "draft 10 public launch headlines for a Mac AI assistant"
+```
+
+---
+
+## When Swarms Help
+
+A trusted swarm is a set of Macs you own or explicitly trust. It is useful when
+one laptop should not do all the work: broad reviews, documentation passes,
+repo mapping, test planning, content batches, or longer coding tasks that can
+run while your main Mac stays responsive.
+
+The public swarm is for public-safe work only. It can be useful for marketing
+copy, public docs, open-source snippets, sanitized examples, or other material
+you are comfortable sending outside your trusted devices.
+
+<Avoid>
+Avoid treating the public swarm as a fallback for private work. If the task
+involves private code, customer data, unreleased plans, internal URLs, logs, or
+secrets, keep it local-first or trusted-only.
+</Avoid>
+
+---
+
+## What To Check When Something Fails
+
+Start with the app:
+
+| App section | What it tells you |
+| :--- | :--- |
+| **Current Swarm** | Which swarm is active and whether expected Macs are visible |
+| **Runtime** | Whether the local services are ready, connecting, or need repair |
+| **Activity** | What happened to the latest `/onlymacs` request |
+| **Models** | Whether usable local or swarm models are available |
+| **Settings** | Your default routes, sharing posture, and support bundle export |
+
+If support asks for a text diagnosis, you can run `/onlymacs check` inside
+Claude Code or Codex. Terminal commands are documented in the CLI Reference, but
+they should be the fallback for technical users and support sessions.
+
+<NextStep>
+Go to the [Quickstart](/docs/quickstart) for the app-first setup flow, or open
+[Claude Code And Codex](/docs/assistants) if you already have the app installed.
+</NextStep>

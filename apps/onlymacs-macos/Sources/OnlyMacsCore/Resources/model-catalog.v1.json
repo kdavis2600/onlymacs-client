@@ -1,0 +1,576 @@
+{
+  "schema_version": "1.0",
+  "generated_at": "2026-04-13",
+  "models": [
+    {
+      "id": "qwen25-coder-7b-q4km",
+      "family": "Qwen",
+      "exact_model_name": "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF",
+      "hugging_face_repo": "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF",
+      "hugging_face_file": "Qwen2.5-Coder-7B-Instruct-Q4_K_M.gguf",
+      "role": "coding",
+      "quant": {
+        "label": "q4_k_m",
+        "format": "gguf",
+        "bits": 4
+      },
+      "approximate_ram_gb": 18,
+      "license": {
+        "id": "apache-2.0",
+        "display_name": "Apache 2.0",
+        "metadata_url": "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier4", "tier3", "tier2", "tier1"],
+        "first_run_visible_tiers": ["tier4", "tier3", "tier2", "tier1"],
+        "hardware_hint": "Baseline coding starter model for 32GB-class and above."
+      },
+      "installer": {
+        "starter_subset": true,
+        "recommendation_mode": "singleRecommendedModel",
+        "default_selected_tiers": ["tier4"],
+        "recommendation_badge": "Recommended",
+        "estimated_download_gb": 4.6,
+        "estimated_installed_gb": 4.6
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": false,
+        "collapsed_by_default": false
+      }
+    },
+    {
+      "id": "qwen25-coder-14b-q4km",
+      "family": "Qwen",
+      "exact_model_name": "Qwen/Qwen2.5-Coder-14B-Instruct-GGUF",
+      "hugging_face_repo": "Qwen/Qwen2.5-Coder-14B-Instruct-GGUF",
+      "hugging_face_file": "Qwen2.5-Coder-14B-Instruct-Q4_K_M.gguf",
+      "role": "coding",
+      "quant": {
+        "label": "q4_k_m",
+        "format": "gguf",
+        "bits": 4
+      },
+      "approximate_ram_gb": 32,
+      "license": {
+        "id": "apache-2.0",
+        "display_name": "Apache 2.0",
+        "metadata_url": "https://huggingface.co/Qwen/Qwen2.5-Coder-14B-Instruct-GGUF"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier3", "tier2", "tier1"],
+        "first_run_visible_tiers": ["tier3", "tier2", "tier1"],
+        "hardware_hint": "Primary coding default for 64GB-class sharers."
+      },
+      "installer": {
+        "starter_subset": true,
+        "recommendation_mode": "singleRecommendedModel",
+        "default_selected_tiers": ["tier3"],
+        "recommendation_badge": "Recommended",
+        "estimated_download_gb": 8.7,
+        "estimated_installed_gb": 8.7
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": false,
+        "collapsed_by_default": false
+      }
+    },
+    {
+      "id": "qwen25-coder-32b-q4km",
+      "family": "Qwen",
+      "exact_model_name": "Qwen/Qwen2.5-Coder-32B-Instruct-GGUF",
+      "hugging_face_repo": "Qwen/Qwen2.5-Coder-32B-Instruct-GGUF",
+      "hugging_face_file": "Qwen2.5-Coder-32B-Instruct-Q4_K_M.gguf",
+      "role": "coding",
+      "quant": {
+        "label": "q4_k_m",
+        "format": "gguf",
+        "bits": 4
+      },
+      "approximate_ram_gb": 54,
+      "license": {
+        "id": "apache-2.0",
+        "display_name": "Apache 2.0",
+        "metadata_url": "https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct-GGUF"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier2", "tier1"],
+        "first_run_visible_tiers": ["tier2", "tier1"],
+        "hardware_hint": "Premium coding model for 128GB-class and above."
+      },
+      "installer": {
+        "starter_subset": true,
+        "recommendation_mode": "premiumBundle",
+        "default_selected_tiers": ["tier2"],
+        "recommendation_badge": "Premium Host",
+        "estimated_download_gb": 18.7,
+        "estimated_installed_gb": 18.7
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": false,
+        "collapsed_by_default": false
+      }
+    },
+    {
+      "id": "qwen25-coder-32b-q5km",
+      "family": "Qwen",
+      "exact_model_name": "Qwen/Qwen2.5-Coder-32B-Instruct-GGUF",
+      "hugging_face_repo": "Qwen/Qwen2.5-Coder-32B-Instruct-GGUF",
+      "hugging_face_file": "Qwen2.5-Coder-32B-Instruct-Q5_K_M.gguf",
+      "role": "coding",
+      "quant": {
+        "label": "q5_k_m",
+        "format": "gguf",
+        "bits": 5
+      },
+      "approximate_ram_gb": 68,
+      "license": {
+        "id": "apache-2.0",
+        "display_name": "Apache 2.0",
+        "metadata_url": "https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct-GGUF"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier1"],
+        "first_run_visible_tiers": ["tier1"],
+        "hardware_hint": "Flagship Tier 1 coding default with extra quality headroom."
+      },
+      "installer": {
+        "starter_subset": true,
+        "recommendation_mode": "beastBundle",
+        "default_selected_tiers": ["tier1"],
+        "recommendation_badge": "Recommended",
+        "estimated_download_gb": 22.9,
+        "estimated_installed_gb": 22.9
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": false,
+        "collapsed_by_default": false
+      }
+    },
+    {
+      "id": "qwen36-35b-a3b-q4km",
+      "family": "Qwen",
+      "exact_model_name": "Qwen/Qwen3.6-35B-A3B",
+      "hugging_face_repo": "Qwen/Qwen3.6-35B-A3B",
+      "role": "general",
+      "quant": {
+        "label": "q4_K_M",
+        "format": "ollama",
+        "bits": 4
+      },
+      "approximate_ram_gb": 48,
+      "license": {
+        "id": "apache-2.0",
+        "display_name": "Apache 2.0",
+        "metadata_url": "https://huggingface.co/Qwen/Qwen3.6-35B-A3B"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier3", "tier2", "tier1"],
+        "first_run_visible_tiers": ["tier3", "tier2", "tier1"],
+        "hardware_hint": "64GB-class opt-in Qwen 3.6 install for Macs that want a stronger general model without jumping all the way to the bigger q8_0 footprint."
+      },
+      "installer": {
+        "starter_subset": true,
+        "recommendation_mode": "premiumBundle",
+        "default_selected_tiers": [],
+        "recommendation_badge": "Advanced Qwen 3.6",
+        "estimated_download_gb": 24.0,
+        "estimated_installed_gb": 24.0
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": false,
+        "collapsed_by_default": false
+      }
+    },
+    {
+      "id": "qwen36-35b-a3b-q8_0",
+      "family": "Qwen",
+      "exact_model_name": "Qwen/Qwen3.6-35B-A3B",
+      "hugging_face_repo": "Qwen/Qwen3.6-35B-A3B",
+      "role": "general",
+      "quant": {
+        "label": "q8_0",
+        "format": "ollama",
+        "bits": 8
+      },
+      "approximate_ram_gb": 72,
+      "license": {
+        "id": "apache-2.0",
+        "display_name": "Apache 2.0",
+        "metadata_url": "https://huggingface.co/Qwen/Qwen3.6-35B-A3B"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier2", "tier1"],
+        "first_run_visible_tiers": ["tier2", "tier1"],
+        "hardware_hint": "Flagship Qwen 3.6 install for 128GB-class Macs that want more quality than the smaller Qwen 2.5 coder default."
+      },
+      "installer": {
+        "starter_subset": true,
+        "recommendation_mode": "premiumBundle",
+        "default_selected_tiers": ["tier2"],
+        "recommendation_badge": "Flagship",
+        "estimated_download_gb": 39.0,
+        "estimated_installed_gb": 39.0
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": false,
+        "collapsed_by_default": false
+      }
+    },
+    {
+      "id": "gemma3-27b-q4km",
+      "family": "Gemma",
+      "exact_model_name": "google/gemma-3-27b-it",
+      "hugging_face_repo": "google/gemma-3-27b-it-GGUF",
+      "hugging_face_file": "gemma-3-27b-it-q4_k_m.gguf",
+      "role": "general",
+      "quant": {
+        "label": "q4_k_m",
+        "format": "gguf",
+        "bits": 4
+      },
+      "approximate_ram_gb": 48,
+      "license": {
+        "id": "gemma",
+        "display_name": "Gemma Terms",
+        "metadata_url": "https://huggingface.co/google/gemma-3-27b-it"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier3", "tier2", "tier1"],
+        "first_run_visible_tiers": ["tier3", "tier2", "tier1"],
+        "hardware_hint": "Main general-purpose optional model once 64GB-class disk headroom allows."
+      },
+      "installer": {
+        "starter_subset": true,
+        "recommendation_mode": "premiumBundle",
+        "default_selected_tiers": [],
+        "recommendation_badge": "General Purpose",
+        "estimated_download_gb": 16.2,
+        "estimated_installed_gb": 16.2
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": false,
+        "collapsed_by_default": false
+      }
+    },
+    {
+      "id": "gemma4-31b-q4km",
+      "family": "Gemma",
+      "exact_model_name": "google/gemma-4-31b-it",
+      "hugging_face_repo": "google/gemma-4-31b-it-GGUF",
+      "hugging_face_file": "gemma-4-31b-it-q4_k_m.gguf",
+      "role": "general",
+      "quant": {
+        "label": "q4_k_m",
+        "format": "gguf",
+        "bits": 4
+      },
+      "approximate_ram_gb": 58,
+      "license": {
+        "id": "gemma",
+        "display_name": "Gemma Terms",
+        "metadata_url": "https://huggingface.co/google/gemma-4-31b-it"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier2", "tier1"],
+        "first_run_visible_tiers": ["tier2", "tier1"],
+        "hardware_hint": "Premium general-purpose model for high-memory sharers."
+      },
+      "installer": {
+        "starter_subset": true,
+        "recommendation_mode": "premiumBundle",
+        "default_selected_tiers": [],
+        "recommendation_badge": "High-memory",
+        "estimated_download_gb": 19.1,
+        "estimated_installed_gb": 19.1
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": false,
+        "collapsed_by_default": false
+      }
+    },
+    {
+      "id": "codestral-22b-q4km",
+      "family": "Mistral",
+      "exact_model_name": "Mistral/Codestral-22B",
+      "hugging_face_repo": "Mistral/Codestral-22B-v0.1-GGUF",
+      "hugging_face_file": "codestral-22b-v0.1-q4_k_m.gguf",
+      "role": "coding",
+      "quant": {
+        "label": "q4_k_m",
+        "format": "gguf",
+        "bits": 4
+      },
+      "approximate_ram_gb": 44,
+      "license": {
+        "id": "mistral-research",
+        "display_name": "Mistral Research License",
+        "metadata_url": "https://huggingface.co/Mistral/Codestral-22B-v0.1"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier2", "tier1"],
+        "first_run_visible_tiers": ["tier2", "tier1"],
+        "hardware_hint": "Optional code-specialist install on premium hosts."
+      },
+      "installer": {
+        "starter_subset": true,
+        "recommendation_mode": "premiumBundle",
+        "default_selected_tiers": [],
+        "recommendation_badge": "Code Specialist",
+        "estimated_download_gb": 13.5,
+        "estimated_installed_gb": 13.5
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": false,
+        "collapsed_by_default": false
+      }
+    },
+    {
+      "id": "qwq-32b-q4km",
+      "family": "Qwen",
+      "exact_model_name": "QwQ-32B",
+      "hugging_face_repo": "Qwen/QwQ-32B-GGUF",
+      "hugging_face_file": "QwQ-32B-Q4_K_M.gguf",
+      "role": "reasoning",
+      "quant": {
+        "label": "q4_k_m",
+        "format": "gguf",
+        "bits": 4
+      },
+      "approximate_ram_gb": 54,
+      "license": {
+        "id": "apache-2.0",
+        "display_name": "Apache 2.0",
+        "metadata_url": "https://huggingface.co/Qwen/QwQ-32B-GGUF"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier1"],
+        "first_run_visible_tiers": ["tier1"],
+        "hardware_hint": "Optional reasoning-heavy install for flagship hosts."
+      },
+      "installer": {
+        "starter_subset": true,
+        "recommendation_mode": "beastBundle",
+        "default_selected_tiers": [],
+        "recommendation_badge": "Reasoning",
+        "estimated_download_gb": 18.9,
+        "estimated_installed_gb": 18.9
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": false,
+        "collapsed_by_default": false
+      }
+    },
+    {
+      "id": "gpt-oss-120b-mxfp4",
+      "family": "OpenAI",
+      "exact_model_name": "OpenAI/gpt-oss-120b",
+      "hugging_face_repo": "openai/gpt-oss-120b",
+      "role": "reasoning",
+      "quant": {
+        "label": "mxfp4",
+        "format": "ollama",
+        "bits": 4
+      },
+      "approximate_ram_gb": 80,
+      "license": {
+        "id": "apache-2.0",
+        "display_name": "Apache 2.0",
+        "metadata_url": "https://ollama.com/library/gpt-oss:120b"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier2", "tier1"],
+        "first_run_visible_tiers": ["tier2", "tier1"],
+        "hardware_hint": "128GB-class reasoning and agentic model. The Ollama artifact is about 65 GB, but OnlyMacs reserves extra memory headroom for context and serving stability."
+      },
+      "installer": {
+        "starter_subset": false,
+        "recommendation_mode": "premiumBundle",
+        "default_selected_tiers": [],
+        "recommendation_badge": "128GB Agentic",
+        "estimated_download_gb": 65.0,
+        "estimated_installed_gb": 65.0
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": false,
+        "collapsed_by_default": false
+      }
+    },
+    {
+      "id": "deepseek-r1-70b-q4km",
+      "family": "DeepSeek",
+      "exact_model_name": "DeepSeek-R1-Distill-Llama-70B",
+      "hugging_face_repo": "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
+      "role": "reasoning",
+      "quant": {
+        "label": "q4_k_m",
+        "format": "ollama",
+        "bits": 4
+      },
+      "approximate_ram_gb": 76,
+      "license": {
+        "id": "mit",
+        "display_name": "MIT",
+        "metadata_url": "https://ollama.com/library/deepseek-r1:70b"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier2", "tier1"],
+        "first_run_visible_tiers": ["tier2", "tier1"],
+        "hardware_hint": "128GB-class DeepSeek reasoning option. The Ollama model is about 43 GB, but OnlyMacs keeps it off 64GB recommendations because 70B serving needs runtime headroom."
+      },
+      "installer": {
+        "starter_subset": false,
+        "recommendation_mode": "premiumBundle",
+        "default_selected_tiers": [],
+        "recommendation_badge": "128GB Reasoning",
+        "estimated_download_gb": 43.0,
+        "estimated_installed_gb": 43.0
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": false,
+        "collapsed_by_default": false
+      }
+    },
+    {
+      "id": "qwen25-72b-q4km",
+      "family": "Qwen",
+      "exact_model_name": "Qwen/Qwen2.5-72B-Instruct",
+      "hugging_face_repo": "Qwen/Qwen2.5-72B-Instruct",
+      "role": "general",
+      "quant": {
+        "label": "q4_k_m",
+        "format": "ollama",
+        "bits": 4
+      },
+      "approximate_ram_gb": 80,
+      "license": {
+        "id": "qwen",
+        "display_name": "Qwen License",
+        "metadata_url": "https://ollama.com/library/qwen2.5:72b"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier2", "tier1"],
+        "first_run_visible_tiers": ["tier2", "tier1"],
+        "hardware_hint": "128GB-class Qwen general model with 72B parameters and long-context multilingual strength. Kept off 64GB recommendations to avoid fragile serving."
+      },
+      "installer": {
+        "starter_subset": false,
+        "recommendation_mode": "premiumBundle",
+        "default_selected_tiers": [],
+        "recommendation_badge": "128GB General",
+        "estimated_download_gb": 47.0,
+        "estimated_installed_gb": 47.0
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": false,
+        "collapsed_by_default": false
+      }
+    },
+    {
+      "id": "llama31-70b-q4km",
+      "family": "Llama",
+      "exact_model_name": "Meta-Llama-3.1-70B-Instruct",
+      "hugging_face_repo": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+      "role": "general",
+      "quant": {
+        "label": "q4_k_m",
+        "format": "ollama",
+        "bits": 4
+      },
+      "approximate_ram_gb": 76,
+      "license": {
+        "id": "llama-community",
+        "display_name": "Llama Community License",
+        "metadata_url": "https://ollama.com/library/llama3.1:70b"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier2", "tier1"],
+        "first_run_visible_tiers": ["tier2", "tier1"],
+        "hardware_hint": "128GB-class Llama 3.1 70B option for long-context general work and tool-style tasks. It is selectable on high-memory Macs, not prechecked by default."
+      },
+      "installer": {
+        "starter_subset": false,
+        "recommendation_mode": "premiumBundle",
+        "default_selected_tiers": [],
+        "recommendation_badge": "128GB General",
+        "estimated_download_gb": 43.0,
+        "estimated_installed_gb": 43.0
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": false,
+        "collapsed_by_default": false
+      }
+    },
+    {
+      "id": "qwen3-235b-a22b-beast",
+      "family": "Qwen",
+      "exact_model_name": "Qwen3 235B-A22B",
+      "hugging_face_repo": "Qwen/Qwen3-235B-A22B-GGUF",
+      "hugging_face_file": "Qwen3-235B-A22B-Q4_K_M.gguf",
+      "role": "reasoning",
+      "quant": {
+        "label": "q4_k_m",
+        "format": "gguf",
+        "bits": 4
+      },
+      "approximate_ram_gb": 210,
+      "license": {
+        "id": "apache-2.0",
+        "display_name": "Apache 2.0",
+        "metadata_url": "https://huggingface.co/Qwen"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier1"],
+        "first_run_visible_tiers": ["tier1"],
+        "hardware_hint": "Beast Mode flagship MoE for rare premium hosts only."
+      },
+      "installer": {
+        "starter_subset": false,
+        "recommendation_mode": "beastBundle",
+        "default_selected_tiers": [],
+        "recommendation_badge": "Beast Mode",
+        "estimated_download_gb": 132.0,
+        "estimated_installed_gb": 132.0
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": true,
+        "collapsed_by_default": true
+      }
+    },
+    {
+      "id": "llama4-maverick-beast",
+      "family": "Llama",
+      "exact_model_name": "Llama 4 Maverick",
+      "hugging_face_repo": "meta-llama/Llama-4-Maverick-GGUF",
+      "hugging_face_file": "llama-4-maverick-q4_k_m.gguf",
+      "role": "general",
+      "quant": {
+        "label": "q4_k_m",
+        "format": "gguf",
+        "bits": 4
+      },
+      "approximate_ram_gb": 240,
+      "license": {
+        "id": "llama-community",
+        "display_name": "Llama Community License",
+        "metadata_url": "https://huggingface.co/meta-llama"
+      },
+      "capability_tiers": {
+        "supported_tiers": ["tier1"],
+        "first_run_visible_tiers": ["tier1"],
+        "hardware_hint": "Beast Mode flagship install for 256GB-class hosts with abundant disk."
+      },
+      "installer": {
+        "starter_subset": false,
+        "recommendation_mode": "beastBundle",
+        "default_selected_tiers": [],
+        "recommendation_badge": "Beast Mode",
+        "estimated_download_gb": 140.0,
+        "estimated_installed_gb": 140.0
+      },
+      "advanced_visibility": {
+        "beast_mode_eligible": true,
+        "collapsed_by_default": true
+      }
+    }
+  ]
+}
