@@ -68,8 +68,12 @@ struct InstallerPackageSelections: Equatable {
 }
 
 func shouldAutoBootstrapOllamaDependency(
-    launchRequestedInstallerSelectionApply _: Bool,
-    installerPackageSelections _: InstallerPackageSelections?
+    launchRequestedInstallerSelectionApply: Bool,
+    installerPackageSelections: InstallerPackageSelections?
 ) -> Bool {
-    false
+    guard launchRequestedInstallerSelectionApply else { return false }
+    guard let installerPackageSelections else { return false }
+    return installerPackageSelections.canAutoProvisionWithoutExtraInput
+        && installerPackageSelections.shareThisMac
+        && installerPackageSelections.installStarterModels
 }

@@ -48,3 +48,60 @@ func installerProgressDetailIncludesTransferRateWhenAvailable() {
     #expect(progress.detail.contains("%"))
     #expect(progress.detail.contains("/s"))
 }
+
+@Test
+func installerLaunchCanAutoBootstrapOllamaForPublicStarterSetup() {
+    let selections = InstallerPackageSelections(
+        joinPublicSwarm: true,
+        shareThisMac: true,
+        runOnStartup: true,
+        installStarterModels: true,
+        installCodex: true,
+        installClaude: true,
+        presentedByInstaller: true
+    )
+
+    #expect(shouldAutoBootstrapOllamaDependency(
+        launchRequestedInstallerSelectionApply: true,
+        installerPackageSelections: selections
+    ) == true)
+}
+
+@Test
+func ollamaAutoBootstrapStaysOffWithoutPublicStarterProvisioning() {
+    let noStarterModels = InstallerPackageSelections(
+        joinPublicSwarm: true,
+        shareThisMac: true,
+        runOnStartup: true,
+        installStarterModels: false,
+        installCodex: true,
+        installClaude: true,
+        presentedByInstaller: true
+    )
+    let useOnly = InstallerPackageSelections(
+        joinPublicSwarm: true,
+        shareThisMac: false,
+        runOnStartup: true,
+        installStarterModels: true,
+        installCodex: true,
+        installClaude: true,
+        presentedByInstaller: true
+    )
+
+    #expect(shouldAutoBootstrapOllamaDependency(
+        launchRequestedInstallerSelectionApply: false,
+        installerPackageSelections: noStarterModels
+    ) == false)
+    #expect(shouldAutoBootstrapOllamaDependency(
+        launchRequestedInstallerSelectionApply: true,
+        installerPackageSelections: noStarterModels
+    ) == false)
+    #expect(shouldAutoBootstrapOllamaDependency(
+        launchRequestedInstallerSelectionApply: true,
+        installerPackageSelections: useOnly
+    ) == false)
+    #expect(shouldAutoBootstrapOllamaDependency(
+        launchRequestedInstallerSelectionApply: true,
+        installerPackageSelections: nil
+    ) == false)
+}

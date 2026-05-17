@@ -2121,7 +2121,13 @@ final class BridgeStore: ObservableObject {
             }
             return
         }
-        installOllamaNow()
+        Task {
+            await ensureRuntimeRunning()
+            await refresh()
+            if runtimeState.ollamaStatus != .ready && runtimeState.ollamaStatus != .external {
+                installOllamaNow()
+            }
+        }
     }
 
     func installAvailableUpdateNow() {

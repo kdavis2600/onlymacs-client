@@ -40,7 +40,7 @@ final class OnlyMacsUpdateTests: XCTestCase {
         XCTAssertFalse(buildInfo.sparkleConfigured)
     }
 
-    func testInstallerApplyLaunchDoesNotAutoBootstrapOllama() {
+    func testInstallerApplyLaunchAutoBootstrapsOllamaForPublicStarterModels() {
         let selections = InstallerPackageSelections(
             joinPublicSwarm: true,
             shareThisMac: true,
@@ -57,7 +57,7 @@ final class OnlyMacsUpdateTests: XCTestCase {
                 installerPackageSelections: selections
             )
         )
-        XCTAssertFalse(
+        XCTAssertTrue(
             shouldAutoBootstrapOllamaDependency(
                 launchRequestedInstallerSelectionApply: true,
                 installerPackageSelections: selections

@@ -95,6 +95,7 @@ actor LocalRuntimeSupervisor {
     private let healthSession: URLSession
     private var coordinatorProcess: Process?
     private var bridgeProcess: Process?
+    private var ollamaProcess: Process?
     private var jobWorkerProcesses: [Int: Process] = [:]
     private var jobWorkerLastLaunchFailureAt: [Int: Date] = [:]
     private var jobWorkerLastExitAt: [Int: Date] = [:]
@@ -119,7 +120,7 @@ actor LocalRuntimeSupervisor {
         if coordinatorHealthy,
            bridgeHealthy,
            !shouldReplaceHealthyBridge(reportedCoordinatorURL: reportedCoordinatorURL, settings: settings) {
-            let ollamaState = await inspectOllamaDependency(autostartIfInstalled: false)
+            let ollamaState = await inspectOllamaDependency(autostartIfInstalled: true)
             return makeState(
                 status: "ready",
                 detail: detailText(for: settings, ollamaState: ollamaState),
@@ -137,7 +138,7 @@ actor LocalRuntimeSupervisor {
                 try await waitUntilHealthy(serviceName: "coordinator", url: coordinatorHealthURL)
             }
             try await waitUntilHealthy(serviceName: "local bridge", url: bridgeHealthURL)
-            let ollamaState = await inspectOllamaDependency(autostartIfInstalled: false)
+            let ollamaState = await inspectOllamaDependency(autostartIfInstalled: true)
             return makeState(
                 status: "ready",
                 detail: detailText(for: settings, ollamaState: ollamaState),
@@ -281,6 +282,13 @@ actor LocalRuntimeSupervisor {
                 appPath: appURL.path
             )
         }
+        if let executableURL = detectOllamaExecutableURL() {
+            return OllamaDependencyState(
+                status: .installedButUnavailable,
+                detail: "OnlyMacs found the Ollama command at \(executableURL.path), but it is not serving the local API yet.",
+                appPath: nil
+            )
+        }
         return OllamaDependencyState(
             status: .missing,
             detail: "OnlyMacs needs Ollama installed before this Mac can host local models or run one-click model installs.",
@@ -305,7 +313,30 @@ actor LocalRuntimeSupervisor {
             )
         }
 
+        cleanupExitedOllamaProcess()
+
         guard let appURL = detectOllamaAppURL() else {
+            if autostartIfInstalled, await launchOllamaServeIfAvailable() {
+                for _ in 0..<40 {
+                    if await isHealthy(url: ollamaHealthURL) {
+                        return OllamaDependencyState(
+                            status: .ready,
+                            detail: "Ollama is running locally and ready for model downloads.",
+                            appPath: nil
+                        )
+                    }
+                    try? await Task.sleep(nanoseconds: 250_000_000)
+                }
+            }
+
+            if let executableURL = detectOllamaExecutableURL() {
+                return OllamaDependencyState(
+                    status: .installedButUnavailable,
+                    detail: "OnlyMacs found the Ollama command at \(executableURL.path), but the local runtime is not answering yet.",
+                    appPath: nil
+                )
+            }
+
             return OllamaDependencyState(
                 status: .missing,
                 detail: "OnlyMacs needs Ollama installed before this Mac can host local models or run one-click model installs.",
@@ -343,11 +374,57 @@ actor LocalRuntimeSupervisor {
         return candidates.first(where: { fileManager.fileExists(atPath: $0.path) })
     }
 
+    private func detectOllamaExecutableURL() -> URL? {
+        ollamaExecutableCandidates().first(where: { fileManager.isExecutableFile(atPath: $0.path) })
+    }
+
+    private func ollamaExecutableCandidates() -> [URL] {
+        var candidates = [
+            URL(fileURLWithPath: "/opt/homebrew/bin/ollama", isDirectory: false),
+            URL(fileURLWithPath: "/usr/local/bin/ollama", isDirectory: false),
+            URL(fileURLWithPath: "/usr/bin/ollama", isDirectory: false),
+        ]
+
+        let path = ProcessInfo.processInfo.environment["PATH"] ?? ""
+        for directory in path.split(separator: ":") {
+            let trimmed = String(directory).trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            candidates.append(URL(fileURLWithPath: trimmed, isDirectory: true).appendingPathComponent("ollama", isDirectory: false))
+        }
+
+        var seen = Set<String>()
+        return candidates.filter { seen.insert($0.path).inserted }
+    }
+
     private func launchOllamaApp(at url: URL) {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
         process.arguments = ["-a", url.path]
         try? process.run()
+    }
+
+    private func launchOllamaServeIfAvailable() async -> Bool {
+        if ollamaProcess?.isRunning == true {
+            return true
+        }
+        guard let executableURL = detectOllamaExecutableURL() else {
+            return false
+        }
+
+        do {
+            try prepareLogsDirectory()
+            let process = Process()
+            process.executableURL = executableURL
+            process.arguments = ["serve"]
+            process.environment = Self.helperBaseEnvironment()
+            process.standardOutput = try logHandle(named: "ollama.log")
+            process.standardError = process.standardOutput
+            try process.run()
+            ollamaProcess = process
+            return true
+        } catch {
+            return false
+        }
     }
 
     private func launchService(helperName: String, environment: [String: String], logName: String) throws -> Process {
@@ -576,12 +653,20 @@ actor LocalRuntimeSupervisor {
         await stopJobWorkerProcesses()
         await stop(process: bridgeProcess)
         await stop(process: coordinatorProcess)
+        await stop(process: ollamaProcess)
         await terminateLingeringHelper(named: "onlymacs-local-bridge")
         await terminateLingeringHelper(named: "onlymacs-coordinator")
         bridgeProcess = nil
         coordinatorProcess = nil
+        ollamaProcess = nil
         jobWorkerActiveSwarmID = ""
         jobWorkerAllowsTests = false
+    }
+
+    private func cleanupExitedOllamaProcess() {
+        if ollamaProcess?.isRunning != true {
+            ollamaProcess = nil
+        }
     }
 
     private func stopJobWorkerProcesses() async {

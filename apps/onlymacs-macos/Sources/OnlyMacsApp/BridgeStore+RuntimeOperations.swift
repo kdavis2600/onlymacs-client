@@ -65,6 +65,14 @@ func shouldAdoptHostedCoordinatorForPublicSwarm(
         || host == "localhost"
 }
 
+func shouldResetAutomaticPopupBootstrapAfterRuntimeTransition(
+    previousOllamaReady: Bool,
+    currentOllamaReady: Bool,
+    hasCompletedStarterModelSetup: Bool
+) -> Bool {
+    !hasCompletedStarterModelSetup && !previousOllamaReady && currentOllamaReady
+}
+
 func displayableBridgeError(status: String, error: String?) -> String? {
     let normalizedStatus = status.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     guard normalizedStatus == "degraded" || normalizedStatus == "error" else {
@@ -340,7 +348,15 @@ extension BridgeStore {
             return
         }
 
+        let previousOllamaReady = runtimeState.ollamaReady
         runtimeState = await supervisor.ensureRunning(settings: settings)
+        if shouldResetAutomaticPopupBootstrapAfterRuntimeTransition(
+            previousOllamaReady: previousOllamaReady,
+            currentOllamaReady: runtimeState.ollamaReady,
+            hasCompletedStarterModelSetup: hasCompletedStarterModelSetup
+        ) {
+            hasTriggeredAutomaticPopupBootstrapThisLaunch = false
+        }
         handleOllamaDependencyIfNeeded()
         if runtimeState.status != "ready" {
             lastError = runtimeState.detail
@@ -926,7 +942,7 @@ extension BridgeStore {
 
     func handleOllamaDependencyIfNeeded(force: Bool = false) {
         guard force || shouldBootstrapOllamaDependency else { return }
-        guard force || !hasHandledOllamaDependencyThisLaunch else { return }
+        guard !hasHandledOllamaDependencyThisLaunch else { return }
 
         switch runtimeState.ollamaStatus {
         case .missing:

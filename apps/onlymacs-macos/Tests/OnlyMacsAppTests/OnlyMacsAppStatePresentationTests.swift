@@ -26,6 +26,25 @@ struct OnlyMacsAppStatePresentationTests {
     }
 
     @Test
+    func automaticPopupBootstrapCanRetryWhenOllamaBecomesReady() {
+        #expect(shouldResetAutomaticPopupBootstrapAfterRuntimeTransition(
+            previousOllamaReady: false,
+            currentOllamaReady: true,
+            hasCompletedStarterModelSetup: false
+        ) == true)
+        #expect(shouldResetAutomaticPopupBootstrapAfterRuntimeTransition(
+            previousOllamaReady: false,
+            currentOllamaReady: false,
+            hasCompletedStarterModelSetup: false
+        ) == false)
+        #expect(shouldResetAutomaticPopupBootstrapAfterRuntimeTransition(
+            previousOllamaReady: false,
+            currentOllamaReady: true,
+            hasCompletedStarterModelSetup: true
+        ) == false)
+    }
+
+    @Test
     func controlCenterSectionsDoNotExposeRemovedReadyNav() {
         let rawValues = Set(ControlCenterSection.allCases.map(\.rawValue))
         let titles = Set(ControlCenterSection.allCases.map(\.title))
